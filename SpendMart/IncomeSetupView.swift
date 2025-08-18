@@ -70,7 +70,7 @@ struct IncomeSetupView: View {
             .background(Color.white)
             .navigationBarHidden(true)
             .fullScreenCover(isPresented: $showingDashboard) {
-                HomeView()
+                RootTabView()
             }
             .alert("Invalid Income", isPresented: $showAlert) {
                 Button("OK", role: .cancel) { }
