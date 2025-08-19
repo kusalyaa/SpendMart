@@ -66,7 +66,9 @@ struct CategoriesView: View {
                     ScrollView {
                         LazyVGrid(columns: columns, spacing: 20) {
                             ForEach(categories) { category in
-                                NavigationLink(destination: CategoryCard(category: category)) {
+                                NavigationLink(
+                                    destination: CategoryList(category: category)
+                                ) {
                                     VStack {
                                         Image(category.image)
                                             .resizable()
