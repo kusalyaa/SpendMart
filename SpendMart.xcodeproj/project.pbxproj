@@ -6,6 +6,11 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		2F4732562E57481800A9F9DD /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = 2F4732552E57481800A9F9DD /* FirebaseAuth */; };
+		2F4732582E57481800A9F9DD /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = 2F4732572E57481800A9F9DD /* FirebaseFirestore */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		2FD8BBAD2E51921F002AE75D /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -29,9 +34,30 @@
 		2FD8BBB62E51921F002AE75D /* SpendMartUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SpendMartUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		2F4732632E574E7600A9F9DD /* Exceptions for "SpendMart" folder in "SpendMartTests" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				"App/GoogleService-Info.plist",
+			);
+			target = 2FD8BBAB2E51921F002AE75D /* SpendMartTests */;
+		};
+		2F4732642E574E7600A9F9DD /* Exceptions for "SpendMart" folder in "SpendMartUITests" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				"App/GoogleService-Info.plist",
+			);
+			target = 2FD8BBB52E51921F002AE75D /* SpendMartUITests */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		2FD8BBA12E51921D002AE75D /* SpendMart */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				2F4732632E574E7600A9F9DD /* Exceptions for "SpendMart" folder in "SpendMartTests" target */,
+				2F4732642E574E7600A9F9DD /* Exceptions for "SpendMart" folder in "SpendMartUITests" target */,
+			);
 			path = SpendMart;
 			sourceTree = "<group>";
 		};
@@ -52,6 +78,8 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				2F4732562E57481800A9F9DD /* FirebaseAuth in Frameworks */,
+				2F4732582E57481800A9F9DD /* FirebaseFirestore in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -112,6 +140,8 @@
 			);
 			name = SpendMart;
 			packageProductDependencies = (
+				2F4732552E57481800A9F9DD /* FirebaseAuth */,
+				2F4732572E57481800A9F9DD /* FirebaseFirestore */,
 			);
 			productName = SpendMart;
 			productReference = 2FD8BB9F2E51921D002AE75D /* SpendMart.app */;
@@ -195,6 +225,9 @@
 			);
 			mainGroup = 2FD8BB962E51921D002AE75D;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				2F4732542E57478000A9F9DD /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 2FD8BBA02E51921D002AE75D /* Products */;
 			projectDirPath = "";
@@ -550,6 +583,30 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		2F4732542E57478000A9F9DD /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/firebase/firebase-ios-sdk";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 12.1.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		2F4732552E57481800A9F9DD /* FirebaseAuth */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 2F4732542E57478000A9F9DD /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseAuth;
+		};
+		2F4732572E57481800A9F9DD /* FirebaseFirestore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 2F4732542E57478000A9F9DD /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseFirestore;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 2FD8BB972E51921D002AE75D /* Project object */;
 }

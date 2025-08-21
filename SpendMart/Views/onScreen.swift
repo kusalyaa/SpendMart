@@ -31,6 +31,7 @@ struct SpendSmartOnboardingView: View {
                 }
             }
             
+            
             Spacer()
             
             // Get Started Button
@@ -55,6 +56,7 @@ struct SpendSmartOnboardingView: View {
         }
     }
 }
+
 
 struct ContentView: View {
     var body: some View {
