@@ -6,10 +6,13 @@ import FirebaseFirestore
 struct LoginView: View {
     @State private var email = ""
     @State private var password = ""
-    @State private var showingConfirmEmail = false
     @State private var showingCreateAccount = false
 
-    // Added: validation + error feedback (UI unchanged)
+    // Routing
+    @State private var presentVerify = false
+    @State private var showDashboard = false   // -> DashboardView()
+
+    // Feedback
     @State private var showAlert = false
     @State private var alertMessage = ""
     @State private var isLoading = false
@@ -23,12 +26,10 @@ struct LoginView: View {
                     .foregroundColor(.blue)
                     .padding(.top, 60)
 
-                // Profile Icon
                 ZStack {
                     RoundedRectangle(cornerRadius: 20)
                         .fill(Color.blue)
                         .frame(width: 80, height: 80)
-
                     Image(systemName: "person.fill")
                         .font(.system(size: 32))
                         .foregroundColor(.white)
@@ -36,42 +37,34 @@ struct LoginView: View {
             }
             .padding(.bottom, 40)
 
-            // Form Fields
+            // Form
             VStack(spacing: 20) {
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("Email")
-                        .font(.system(size: 14))
-                        .foregroundColor(.gray)
-
+                    Text("Email").font(.system(size: 14)).foregroundColor(.gray)
                     TextField("Email", text: $email)
                         .textFieldStyle(RoundedBorderTextFieldStyle())
                         .frame(height: 44)
                         .keyboardType(.emailAddress)
-                        .autocapitalization(.none)
+                        .textInputAutocapitalization(.none)
+                        .autocorrectionDisabled(true)
                 }
 
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("Password")
-                        .font(.system(size: 14))
-                        .foregroundColor(.gray)
-
-                    // Keeping TextField as-is to preserve your UI
-                    TextField("Password", text: $password)
+                    Text("Password").font(.system(size: 14)).foregroundColor(.gray)
+                    SecureField("Password", text: $password)
                         .textFieldStyle(RoundedBorderTextFieldStyle())
                         .frame(height: 44)
-                        .keyboardType(.emailAddress)
-                        .autocapitalization(.none)
+                        .textInputAutocapitalization(.none)
+                        .autocorrectionDisabled(true)
                 }
             }
             .padding(.horizontal, 24)
 
             Spacer()
 
-            // Continue Button and Create Account Link
+            // Buttons
             VStack(spacing: 16) {
-                Button(action: {
-                    handleLogin()
-                }) {
+                Button(action: { handleLogin() }) {
                     Text("Continue")
                         .font(.system(size: 18, weight: .semibold))
                         .foregroundColor(.white)
@@ -82,14 +75,10 @@ struct LoginView: View {
                 }
                 .padding(.horizontal, 24)
 
-                Button(action: {
-                    showingCreateAccount = true
-                }) {
+                Button(action: { showingCreateAccount = true }) {
                     HStack(spacing: 4) {
-                        Text("No account?")
-                            .foregroundColor(.gray)
-                        Text("Create Account")
-                            .foregroundColor(.blue)
+                        Text("No account?").foregroundColor(.gray)
+                        Text("Create Account").foregroundColor(.blue)
                     }
                     .font(.system(size: 14))
                 }
@@ -98,19 +87,30 @@ struct LoginView: View {
         }
         .background(Color.white)
         .navigationBarHidden(true)
-        .fullScreenCover(isPresented: $showingConfirmEmail) {
-            ConfirmEmailView()
+
+        // Create account (sign up)
+        .fullScreenCover(isPresented: $showingCreateAccount) { ProfileSetupView() }
+
+        // "Check your email" screen
+        .fullScreenCover(isPresented: $presentVerify) {
+            ConfirmEmailView(
+                userEmail: email,
+                onVerified: { verifiedNavigationFromVerify() },
+                onChangeEmail: { presentVerify = false } // dismiss to edit email
+            )
         }
-        .fullScreenCover(isPresented: $showingCreateAccount) {
-            ProfileSetupView()
+
+        // Dashboard after verified
+        .fullScreenCover(isPresented: $showDashboard) {
+            DashboardView()   // ✅ your dashboard
         }
-        // Simple error alert (UI style unchanged)
+
+        // Errors
         .alert("Login Error", isPresented: $showAlert) {
             Button("OK", role: .cancel) { }
-        } message: {
-            Text(alertMessage)
-        }
-        // Optional: overlay spinner text (non-intrusive, no UI layout change)
+        } message: { Text(alertMessage) }
+
+        // Loader
         .overlay(
             Group {
                 if isLoading {
@@ -124,36 +124,56 @@ struct LoginView: View {
         )
     }
 
-    // MARK: - Logic (UI unchanged)
+    // Dismiss the verify cover, then present dashboard
+    private func verifiedNavigationFromVerify() {
+        Task {
+            guard let user = Auth.auth().currentUser else { return }
+            do {
+                try await user.reload()
+                if user.isEmailVerified {
+                    await MainActor.run { presentVerify = false }
+                    try? await Task.sleep(nanoseconds: 150_000_000) // 0.15s
+                    await MainActor.run { showDashboard = true }
+                }
+            } catch {
+                // ignore transient errors; verify screen stays
+            }
+        }
+    }
 
+    // MARK: - Logic
     private func handleLogin() {
-        // Basic validation (keeps your UI unchanged)
+        // reset routing defensively
+        presentVerify = false
+        showDashboard = false
+
         guard isValidEmail(email) else {
             alertMessage = "Please enter a valid email address"
-            showAlert = true
-            return
+            showAlert = true; return
         }
         guard !password.isEmpty else {
             alertMessage = "Please enter your password"
-            showAlert = true
-            return
+            showAlert = true; return
         }
 
         isLoading = true
         Task {
             do {
-                _ = try await AuthService.shared.signIn(email: email, password: password)
-                // Signed in; now check email verification
-                let user = Auth.auth().currentUser
-                let verified = user?.isEmailVerified ?? false
+                let result = try await Auth.auth().signIn(withEmail: email, password: password)
+                let user = result.user
 
-                isLoading = false
-                if !verified {
-                    // push to ConfirmEmailView (as your UI already does)
-                    showingConfirmEmail = true
+                // Always reload to get fresh verification status
+                try await user.reload()
+                let verified = Auth.auth().currentUser?.isEmailVerified ?? user.isEmailVerified
+
+                if verified {
+                    isLoading = false
+                    showDashboard = true
                 } else {
-                    // Verified → Let your higher-level router (RootView/MainTabView) handle navigation
-                    // Nothing else to do here to keep UI unchanged.
+                    // Send verification email (idempotent)
+                    try await user.sendEmailVerification()
+                    isLoading = false
+                    presentVerify = true
                 }
             } catch {
                 isLoading = false
@@ -169,6 +189,4 @@ struct LoginView: View {
     }
 }
 
-#Preview {
-    LoginView()
-}
+#Preview { LoginView() }
