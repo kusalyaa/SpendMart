@@ -1,323 +1,184 @@
-// HomeView.swift
 import SwiftUI
 
-// MARK: - Dummy values for now
-// TODO: Replace with backend API values
-private let monthlyBudget = (used: 400, total: 1500)
-private let emergencyFund = (used: 400, total: 1500)
-private let creditLimit   = (used: 400, total: 1500)
+private func lkr(_ v: Double) -> String {
+    let f = NumberFormatter()
+    f.numberStyle = .currency
+    f.currencyCode = "LKR"
+    f.maximumFractionDigits = (v.rounded() == v) ? 0 : 2
+    return f.string(from: NSNumber(value: v)) ?? "LKR \(Int(v))"
+}
 
 struct HomeView: View {
+    @StateObject private var store = DashboardStore()
+
     var body: some View {
-        VStack(spacing: 0) {
-            VStack(spacing: 0) {
-                ScrollView {
-                    VStack(spacing: 24) {
-                        
-                        // MARK: - Header section
-                        VStack(spacing: 16) {
-                            Text("Dashboard")
-                                .font(.largeTitle)
-                                .fontWeight(.bold)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                            
-                            // Welcome message
-                            HStack {
-                                VStack(alignment: .leading, spacing: 4) {
-                                    Text("Good morning,")
-                                        .font(.subheadline)
-                                        .foregroundColor(.gray)
-                                    
-                                    Text("John Abraham")
-                                        .font(.title2)
-                                        .fontWeight(.semibold)
-                                }
-                                Spacer()
-                            }
+        NavigationStack {
+            ScrollView(showsIndicators: false) {
+                VStack(alignment: .leading, spacing: 16) {
+
+                    // Title + greeting
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Dashboard")
+                            .font(.system(size: 34, weight: .bold))
+                        if !store.displayName.isEmpty {
+                            Text("Good morning,")
+                                .foregroundStyle(.secondary)
+                            Text(store.displayName)
+                                .font(.title3).fontWeight(.semibold)
                         }
-                        .padding(.horizontal, 20)
-                        .padding(.top, 20)
-                        
-                        // MARK: - Balance overview card
-                        VStack(spacing: 20) {
-                            HStack {
-                                VStack(alignment: .leading, spacing: 8) {
-                                    Text("Total Balance")
-                                        .font(.subheadline)
-                                        .foregroundColor(.white.opacity(0.8))
-                                    
-                                    // TODO: Replace with API total balance
-                                    Text("Rs. 2,50,000")
-                                        .font(.title)
-                                        .fontWeight(.bold)
-                                        .foregroundColor(.white)
-                                }
-                                Spacer()
-                                
-                                // Card icon
-                                Image(systemName: "creditcard.fill")
-                                    .font(.title)
-                                    .foregroundColor(.white.opacity(0.8))
-                            }
-                            
-                            HStack(spacing: 30) {
-                                VStack(alignment: .leading, spacing: 4) {
-                                    Text("Income")
-                                        .font(.caption)
-                                        .foregroundColor(.white.opacity(0.8))
-                                    
-                                    // TODO: Replace with API income
-                                    Text("Rs. 3,00,000")
-                                        .font(.subheadline)
-                                        .fontWeight(.semibold)
-                                        .foregroundColor(.white)
-                                }
-                                
-                                VStack(alignment: .leading, spacing: 4) {
-                                    Text("Expense")
-                                        .font(.caption)
-                                        .foregroundColor(.white.opacity(0.8))
-                                    
-                                    // TODO: Replace with API expense
-                                    Text("Rs. 50,000")
-                                        .font(.subheadline)
-                                        .fontWeight(.semibold)
-                                        .foregroundColor(.white)
-                                }
-                                
-                                Spacer()
-                            }
-                        }
-                        .padding(20)
-                        .background(
-                            LinearGradient(
-                                gradient: Gradient(colors: [Color.blue, Color.blue.opacity(0.8)]),
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
-                        .cornerRadius(16)
-                        .padding(.horizontal, 20)
-                        
-                        // MARK: - Budget Stats Section
-                        VStack(spacing: 16) {
-                            BudgetStatCard(
-                                title: "Monthly Budget",
-                                used: monthlyBudget.used,
-                                total: monthlyBudget.total,
-                                color: .green
-                            )
-                            BudgetStatCard(
-                                title: "Emergency Fund",
-                                used: emergencyFund.used,
-                                total: emergencyFund.total,
-                                color: .red
-                            )
-                            BudgetStatCard(
-                                title: "Credit Limit",
-                                used: creditLimit.used,
-                                total: creditLimit.total,
-                                color: .blue
-                            )
-                        }
-                        .padding(.horizontal, 20)
-                        
-                        // MARK: - Quick Actions Section
-                        VStack(spacing: 16) {
-                            HStack {
-                                Text("Quick Actions")
-                                    .font(.title3)
-                                    .fontWeight(.semibold)
-                                Spacer()
-                            }
-                            .padding(.horizontal, 20)
-                            
-                            HStack(spacing: 20) {
-                                NavigationLink(destination: ScanView()) {
-                                    QuickActionCard(
-                                        icon: "qrcode.viewfinder",
-                                        title: "Scan",
-                                        subtitle: "QR & Barcode",
-                                        color: .purple
-                                    )
-                                }
-                                
-                                NavigationLink(destination: CategoriesView()) {
-                                    QuickActionCard(
-                                        icon: "square.grid.2x2",
-                                        title: "Categories",
-                                        subtitle: "Manage",
-                                        color: .green
-                                    )
-                                }
-                                
-                                NavigationLink(destination: DueView()) {
-                                    QuickActionCard(
-                                        icon: "calendar.badge.exclamationmark",
-                                        title: "Due",
-                                        subtitle: "Payments",
-                                        color: .orange
-                                    )
-                                }
-                            }
-                            .padding(.horizontal, 20)
-                        }
-                        
-                        // MARK: - Recent Transactions
-                        VStack(spacing: 16) {
-                            HStack {
-                                Text("Recent Transactions")
-                                    .font(.title3)
-                                    .fontWeight(.semibold)
-                            }
-                            .padding(.horizontal, 20)
-                            
-                            VStack(spacing: 12) {
-                                // TODO: Replace with dynamic list from API
-                                TransactionRow(
-                                    icon: "cart.fill",
-                                    title: "Grocery Shopping",
-                                    subtitle: "Food & Dining",
-                                    amount: "-Rs. 2,500",
-                                    isExpense: true
-                                )
-                                
-                                TransactionRow(
-                                    icon: "fuelpump.fill",
-                                    title: "Fuel",
-                                    subtitle: "Transportation",
-                                    amount: "-Rs. 3,000",
-                                    isExpense: true
-                                )
-                                
-                                TransactionRow(
-                                    icon: "dollarsign.circle.fill",
-                                    title: "Salary",
-                                    subtitle: "Income",
-                                    amount: "+Rs. 75,000",
-                                    isExpense: false
-                                )
-                            }
-                            .padding(.horizontal, 20)
-                        }
-                        
-                        Spacer(minLength: 100)
                     }
+                    .padding(.horizontal, 16)
+                    .padding(.top, 8)
+
+                    // BLUE CARD
+                    BalanceCard(
+                        total: store.net,             // "Total Balance" = Net After Expenses
+                        income: store.income,
+                        expense: store.expenses
+                    )
+                    .padding(.horizontal, 16)
+
+                    // PROGRESS ROWS
+                    ProgressRow(
+                        title: "Monthly Budget",
+                        current: store.budget,
+                        total: max(store.net, 1)      // show budget / net
+                    )
+                    .padding(.horizontal, 16)
+
+                    ProgressRow(
+                        title: "Emergency Fund",
+                        current: store.emergencyFund,
+                        total: max(store.expenses * 3, 1) // simple goal: 3 months of expenses
+                    )
+                    .padding(.horizontal, 16)
+
+                    ProgressRow(
+                        title: "Credit Limit",
+                        current: store.creditUsed,
+                        total: max(store.creditLimit, 1),
+                        trailingText: "LKR \(Int(store.creditUsed)) / \(Int(store.creditLimit))"
+                    )
+                    .padding(.horizontal, 16)
+
+                    // QUICK ACTIONS
+                    Text("Quick Actions")
+                        .font(.headline)
+                        .padding(.horizontal, 16)
+                        .padding(.top, 8)
+
+                    QuickActionsRow()
+                        .padding(.horizontal, 16)
+                        .padding(.bottom, 24)
                 }
             }
         }
+        .onAppear { store.bind() }
     }
 }
 
-// MARK: - Budget Card
-struct BudgetStatCard: View {
-    let title: String
-    let used: Int
-    let total: Int
-    let color: Color
-    
-    var progress: Double {
+// MARK: - Components
+
+fileprivate struct BalanceCard: View {
+    var total: Double
+    var income: Double
+    var expense: Double
+
+    var body: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: 20)
+                .fill(
+                    LinearGradient(
+                        colors: [Color.blue, Color.blue.opacity(0.8)],
+                        startPoint: .topLeading, endPoint: .bottomTrailing
+                    )
+                )
+            VStack(alignment: .leading, spacing: 10) {
+                Text("Total Balance")
+                    .foregroundStyle(.white.opacity(0.9))
+                Text(lkr(total))
+                    .font(.system(size: 28, weight: .bold))
+                    .foregroundStyle(.white)
+
+                HStack {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Income").foregroundStyle(.white.opacity(0.9))
+                        Text(lkr(income)).foregroundStyle(.white).fontWeight(.semibold)
+                    }
+                    Spacer()
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Expense").foregroundStyle(.white.opacity(0.9))
+                        Text(lkr(expense)).foregroundStyle(.white).fontWeight(.semibold)
+                    }
+                }
+                .padding(.top, 8)
+            }
+            .padding(16)
+        }
+        .frame(height: 140)
+    }
+}
+
+fileprivate struct ProgressRow: View {
+    var title: String
+    var current: Double
+    var total: Double
+    var trailingText: String?
+
+    private var progress: Double {
         guard total > 0 else { return 0 }
-        return min(max(Double(used) / Double(total), 0), 1)
+        return min(max(current / total, 0), 1)
     }
-    
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(spacing: 8) {
             HStack {
-                Text(title)
-                    .font(.subheadline)
-                    .fontWeight(.semibold)
-                    .foregroundColor(.gray)
+                Text(title).foregroundStyle(.secondary)
                 Spacer()
-                Text("LKR \(used) / \(total)")
-                    .font(.subheadline)
-                    .foregroundColor(.gray)
+                Text(trailingText ?? "\(lkr(current)) / \(lkr(total))")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
             }
-            
             ProgressView(value: progress)
-                .tint(color)
+                .tint(.blue)
+                .frame(height: 6)
+                .clipShape(RoundedRectangle(cornerRadius: 6))
         }
-        .padding()
-        .background(Color.gray.opacity(0.05))
+        .padding(14)
+        .background(Color(.secondarySystemBackground))
         .cornerRadius(16)
     }
 }
 
-// MARK: - Quick Action Card
-struct QuickActionCard: View {
-    let icon: String
-    let title: String
-    let subtitle: String
-    let color: Color
-    
+fileprivate struct QuickActionsRow: View {
     var body: some View {
-        VStack(spacing: 12) {
-            ZStack {
-                RoundedRectangle(cornerRadius: 16)
-                    .fill(color.opacity(0.1))
-                    .frame(width: 80, height: 80)
-                
-                Image(systemName: icon)
-                    .font(.title2)
-                    .foregroundColor(color)
-            }
-            
-            VStack(spacing: 2) {
-                Text(title)
-                    .font(.subheadline)
-                    .fontWeight(.semibold)
-                    .foregroundColor(.primary)
-                
-                Text(subtitle)
-                    .font(.caption)
-                    .foregroundColor(.gray)
-            }
+        HStack(spacing: 14) {
+            ActionTile(title: "Scan", subtitle: "QR & Barcode", color: .purple, system: "qrcode.viewfinder")
+            ActionTile(title: "Categories", subtitle: "Manage", color: .green, system: "square.grid.2x2.fill")
+            ActionTile(title: "Due", subtitle: "Payments", color: .orange, system: "calendar.badge.exclamationmark")
         }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 12)
-        .background(Color.white)
-        .cornerRadius(16)
-        .shadow(color: .black.opacity(0.05), radius: 4, x: 0, y: 2)
     }
 }
 
-// MARK: - Transaction Row
-struct TransactionRow: View {
-    let icon: String
-    let title: String
-    let subtitle: String
-    let amount: String
-    let isExpense: Bool
-    
+fileprivate struct ActionTile: View {
+    var title: String
+    var subtitle: String
+    var color: Color
+    var system: String
     var body: some View {
-        HStack(spacing: 12) {
+        VStack(alignment: .leading, spacing: 6) {
             ZStack {
-                Circle()
-                    .fill(isExpense ? Color.red.opacity(0.1) : Color.green.opacity(0.1))
-                    .frame(width: 48, height: 48)
-                
-                Image(systemName: icon)
-                    .font(.title3)
-                    .foregroundColor(isExpense ? .red : .green)
+                RoundedRectangle(cornerRadius: 14).fill(color.opacity(0.12))
+                Image(systemName: system)
+                    .font(.title2).foregroundStyle(color)
             }
-            
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title)
-                    .font(.subheadline)
-                    .fontWeight(.medium)
-                
-                Text(subtitle)
-                    .font(.caption)
-                    .foregroundColor(.gray)
-            }
-            
-            Spacer()
-            
-            Text(amount)
-                .font(.subheadline)
-                .fontWeight(.semibold)
-                .foregroundColor(isExpense ? .red : .green)
+            .frame(width: 72, height: 72)
+            Text(title).fontWeight(.semibold)
+            Text(subtitle).font(.footnote).foregroundStyle(.secondary)
         }
-        .padding(.vertical, 8)
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color(.secondarySystemBackground))
+        .cornerRadius(16)
     }
 }

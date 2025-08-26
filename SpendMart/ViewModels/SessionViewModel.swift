@@ -1,26 +1,52 @@
+// SpendMart/SpendMart/ViewModels/SessionViewModel.swift
+import Foundation
 import FirebaseAuth
-import SwiftUI   // <-- add this if missing
 
 @MainActor
-final class SessionViewModel: ObservableObject {   // <-- must conform here
-    @Published var currentUser: AppUser?
+final class SessionViewModel: ObservableObject {
+    @Published var firebaseUser: User?
     @Published var isEmailVerified = false
 
+    private var listener: AuthStateDidChangeListenerHandle?
+
     init() {
-        Auth.auth().addStateDidChangeListener { [weak self] _, user in
-            Task { await self?.onAuthChange(user) }
+        listener = Auth.auth().addStateDidChangeListener { [weak self] _, user in
+            Task { await self?.handleAuthChange(user) }
         }
     }
 
-    private func onAuthChange(_ user: User?) async {
+    deinit {
+        if let h = listener { Auth.auth().removeStateDidChangeListener(h) }
+    }
+
+    private func handleAuthChange(_ user: User?) async {
         guard let user else {
-            currentUser = nil
+            firebaseUser = nil
             isEmailVerified = false
             return
         }
-        let appUser = AppUser(uid: user.uid, email: user.email ?? "", displayName: user.displayName)
-        do { try await UserService.shared.ensureUserDoc(appUser) } catch { }
-        currentUser = appUser
-        isEmailVerified = user.isEmailVerified
+        do {
+            try await user.reload()
+            let fresh = Auth.auth().currentUser
+            firebaseUser = fresh
+            isEmailVerified = fresh?.isEmailVerified ?? false
+        } catch {
+            firebaseUser = user
+            isEmailVerified = user.isEmailVerified
+        }
+    }
+
+    func refreshVerification() async {
+        guard let u = Auth.auth().currentUser else { return }
+        do {
+            try await u.reload()
+            isEmailVerified = Auth.auth().currentUser?.isEmailVerified ?? false
+        } catch { /* swallow */ }
+    }
+
+    func signOut() {
+        try? Auth.auth().signOut()
+        firebaseUser = nil
+        isEmailVerified = false
     }
 }

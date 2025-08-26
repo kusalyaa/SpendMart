@@ -24,6 +24,16 @@ final class UserService {
     private var db: Firestore { Firestore.firestore() }
     private var users: CollectionReference { db.collection("users") }
 
+    // MARK: - Utils
+
+    /// Safely coerce Firestore numeric fields (NSNumber/Double/Int) to Double.
+    private func toDouble(_ any: Any?) -> Double {
+        if let d = any as? Double { return d }
+        if let n = any as? NSNumber { return n.doubleValue }
+        if let s = any as? String { return Double(s) ?? 0 }
+        return 0
+    }
+
     // MARK: - User Bootstrap / Profile
 
     /// Upsert user document on first registration
@@ -49,7 +59,7 @@ final class UserService {
         try await ref.setData(data, merge: true)
     }
 
-    // MARK: - OTP
+    // MARK: - OTP (kept as-is, small robustness only)
 
     /// Generate a 6-digit OTP, store with expiry (default 10 minutes), and mark as not verified
     func generateAndStoreOTP(for uid: String, ttlMinutes: Int = 10) async throws -> String {
@@ -111,29 +121,29 @@ final class UserService {
         return false
     }
 
-    // MARK: - Financials (Income / Expenses / Budget)
+    // MARK: - Financials + Initial Balances/Credit
 
-    /// Saves income, expenses, and budget under users/{uid}.financials (merged).
-    /// Example doc shape:
-    /// users/{uid} {
-    ///   financials: {
-    ///     monthlyIncome: 100000,
-    ///     monthlyExpenses: 45000,
-    ///     monthlyBudget: 25000
-    ///   },
-    ///   updatedAt: <server time>
-    /// }
+    /// Save income/expenses/budget under users/{uid}/financials (merge; safe to call many times).
+    /// Also initializes balances + initial credit limit (one-time) using a transaction.
     func updateFinancials(uid: String, income: Double, expenses: Double, budget: Double) async throws {
-        let ref = users.document(uid)
+        let net = max(income - expenses, 0)
+
+        // Write financials (keep BOTH keys: "monthlyBudget" and "budget" for compatibility)
         let data: [String: Any] = [
             "financials": [
                 "monthlyIncome": income,
                 "monthlyExpenses": expenses,
-                "monthlyBudget": budget
+                "monthlyBudget": budget,   // canonical
+                "budget": budget,          // compatibility with older readers
+                "netAfterExpenses": net
             ],
             "updatedAt": FieldValue.serverTimestamp()
         ]
-        try await ref.setData(data, merge: true)
+        let userRef = users.document(uid)
+        try await userRef.setData(data, merge: true)
+
+        // Initialize balances & credit (idempotent)
+        try await ensureInitialBalancesAndCredit(uid: uid, income: income, expenses: expenses, budget: budget)
     }
 
     /// Optional helper to fetch financials for prefill
@@ -142,9 +152,94 @@ final class UserService {
         guard let root = snap.data(),
               let dict = root["financials"] as? [String: Any] else { return nil }
 
-        let income = dict["monthlyIncome"] as? Double ?? 0
-        let expenses = dict["monthlyExpenses"] as? Double ?? 0
-        let budget = dict["monthlyBudget"] as? Double ?? 0
+        let income = toDouble(dict["monthlyIncome"])
+        let expenses = toDouble(dict["monthlyExpenses"])
+        // read both keys; prefer canonical "monthlyBudget"
+        let budget = dict["monthlyBudget"].map(toDouble) ?? toDouble(dict["budget"])
+
         return Financials(monthlyIncome: income, monthlyExpenses: expenses, monthlyBudget: budget)
+    }
+
+    func ensureInitialBalancesAndCredit(uid: String, income: Double, expenses: Double, budget: Double) async throws {
+        let userRef = users.document(uid)
+
+        try await withCheckedThrowingContinuation { (cont: CheckedContinuation<Void, Error>) in
+            db.runTransaction({ (tx, errPtr) -> Any? in
+                do {
+                    let snap = try tx.getDocument(userRef)
+                    let root = snap.data() ?? [:]
+
+                    // ---- Balances (set once; or repair if zero) ----
+                    let balances = (root["balances"] as? [String: Any]) ?? [:]
+                    let currentAny = balances["currentBalance"]
+                    let emergencyAny = balances["emergencyFundBalance"]
+
+                    let currentVal = self.toDouble(currentAny)
+                    let emergencyVal = self.toDouble(emergencyAny)
+
+                    if currentAny == nil || currentVal == 0 {
+                        let net = max(income - expenses, 0)
+                        tx.setData(["balances": ["currentBalance": net]], forDocument: userRef, merge: true)
+                    }
+                    if emergencyAny == nil {
+                        tx.setData(["balances": ["emergencyFundBalance": 0.0]], forDocument: userRef, merge: true)
+                    }
+
+                    // ---- Credit (create if missing OR if limit is 0) ----
+                    let credit = (root["credit"] as? [String: Any]) ?? [:]
+                    let limitVal = self.toDouble(credit["limit"])
+                    if limitVal <= 0 {
+                        let limit = Self.computeInitialCreditLimit(income: income, expenses: expenses, budget: budget)
+                        let patch: [String: Any] = [
+                            "limit": limit,
+                            "used": self.toDouble(credit["used"]),
+                            "apr": self.toDouble(credit["apr"]),      // set later when plans exist
+                            "score": self.toDouble(credit["score"]),  // grows later from performance/docs
+                            "updatedAt": FieldValue.serverTimestamp()
+                        ]
+                        tx.setData(["credit": patch], forDocument: userRef, merge: true)
+                    }
+
+                    return nil
+                } catch {
+                    errPtr?.pointee = error as NSError
+                    return nil
+                }
+            }, completion: { _, error in
+                if let error { cont.resume(throwing: error) } else { cont.resume() }
+            })
+        }
+    }
+
+
+    /// Initial credit = 80% of disposable (net - budget), capped to LKR 10k–500k.
+    private static func computeInitialCreditLimit(income: Double, expenses: Double, budget: Double) -> Double {
+        let net = max(income - expenses, 0)
+        let clampedBudget = max(min(budget, net), 0)
+        let disposable = max(net - clampedBudget, 0)
+        let base = disposable * 0.80
+        // Caps (adjust anytime): min 10,000 ; max 500,000 LKR
+        let capped = min(max(base, 10_000), 500_000)
+        return capped
+    }
+
+    // MARK: - (Future) credit helpers — stubs to avoid later refactors
+
+    /// Increase credit.used (e.g., user pays with credit). Call with a positive amount.
+    func addCreditSpend(uid: String, amount: Double) async throws {
+        guard amount > 0 else { return }
+        let ref = users.document(uid)
+        try await ref.setData([
+            "credit": ["used": FieldValue.increment(amount)]
+        ], merge: true)
+    }
+
+    /// Decrease credit.used (e.g., user repays). Call with a positive amount.
+    func addCreditRepayment(uid: String, amount: Double) async throws {
+        guard amount > 0 else { return }
+        let ref = users.document(uid)
+        try await ref.setData([
+            "credit": ["used": FieldValue.increment(-amount)]
+        ], merge: true)
     }
 }
