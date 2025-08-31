@@ -102,7 +102,7 @@ struct LoginView: View {
 
         // Dashboard after verified
         .fullScreenCover(isPresented: $showDashboard) {
-            HomeView()   // ✅ your dashboard
+            RootTabView()   
         }
 
         // Errors

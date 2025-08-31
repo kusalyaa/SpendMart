@@ -41,23 +41,28 @@ struct HomeView: View {
                     // PROGRESS ROWS
                     ProgressRow(
                         title: "Monthly Budget",
-                        current: store.budget,
-                        total: max(store.net, 1)      // show budget / net
+                        current: store.budgetRemaining,
+                        total: max(store.budget, 1),
+                        trailingText: "\(lkr(store.budgetRemaining)) / \(lkr(store.budget))"
                     )
                     .padding(.horizontal, 16)
 
                     ProgressRow(
                         title: "Emergency Fund",
                         current: store.emergencyFund,
-                        total: max(store.expenses * 3, 1) // simple goal: 3 months of expenses
+                        total: max(store.emergencyGoal, 0), // goal can be 0 initially
+                        trailingText: store.emergencyGoal > 0
+                            ? "\(lkr(store.emergencyFund)) / \(lkr(store.emergencyGoal)) • \(lkr(store.emergencyLeftToGoal)) to go"
+                            : "\(lkr(0)) / \(lkr(0))"
                     )
+
                     .padding(.horizontal, 16)
 
                     ProgressRow(
                         title: "Credit Limit",
-                        current: store.creditUsed,
+                        current: store.creditAvailable,
                         total: max(store.creditLimit, 1),
-                        trailingText: "LKR \(Int(store.creditUsed)) / \(Int(store.creditLimit))"
+                        trailingText: "\(lkr(store.creditAvailable)) / \(lkr(store.creditLimit))"
                     )
                     .padding(.horizontal, 16)
 
