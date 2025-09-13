@@ -1,18 +1,12 @@
 #if targetEnvironment(simulator)
-
 import SwiftUI
-import UIKit
-
-/// Simulator stub – no camera on Simulator.
 struct DocumentScanner: View {
     var onComplete: (_ images: [UIImage]) -> Void
     var onCancel: () -> Void
     var onError: (_ error: Error) -> Void
-    var body: some View { EmptyView() }
+    var body: some View { EmptyView() } // no camera in Simulator
 }
-
 #else
-
 import SwiftUI
 import VisionKit
 
@@ -22,8 +16,8 @@ struct DocumentScanner: UIViewControllerRepresentable {
         init(_ parent: DocumentScanner) { self.parent = parent }
 
         func documentCameraViewController(_ c: VNDocumentCameraViewController, didFinishWith scan: VNDocumentCameraScan) {
-            let first = (0..<scan.pageCount).first.map { scan.imageOfPage(at: $0) }
-            c.dismiss(animated: true) { self.parent.onComplete(first.map { [$0] } ?? []) }
+            let imgs = (0..<scan.pageCount).map { scan.imageOfPage(at: $0) }
+            c.dismiss(animated: true) { self.parent.onComplete(imgs) }
         }
         func documentCameraViewControllerDidCancel(_ c: VNDocumentCameraViewController) {
             c.dismiss(animated: true) { self.parent.onCancel() }
