@@ -85,7 +85,7 @@ struct ScanView: View {
 
                 // Hidden link to Add Item
                 NavigationLink("", isActive: $goAddItem) {
-                    AddItemView(
+                    AddItemView1(
                         presetName: prefName,
                         presetAmountText: prefAmountText,
                         presetDate: prefDate,

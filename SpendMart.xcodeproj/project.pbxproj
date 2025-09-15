@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		2F4732562E57481800A9F9DD /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = 2F4732552E57481800A9F9DD /* FirebaseAuth */; };
 		2F4732582E57481800A9F9DD /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = 2F4732572E57481800A9F9DD /* FirebaseFirestore */; };
+		2FCE04542E77F766005811C3 /* FirebaseStorage in Frameworks */ = {isa = PBXBuildFile; productRef = 2FCE04532E77F766005811C3 /* FirebaseStorage */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -80,6 +81,7 @@
 			files = (
 				2F4732562E57481800A9F9DD /* FirebaseAuth in Frameworks */,
 				2F4732582E57481800A9F9DD /* FirebaseFirestore in Frameworks */,
+				2FCE04542E77F766005811C3 /* FirebaseStorage in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -142,6 +144,7 @@
 			packageProductDependencies = (
 				2F4732552E57481800A9F9DD /* FirebaseAuth */,
 				2F4732572E57481800A9F9DD /* FirebaseFirestore */,
+				2FCE04532E77F766005811C3 /* FirebaseStorage */,
 			);
 			productName = SpendMart;
 			productReference = 2FD8BB9F2E51921D002AE75D /* SpendMart.app */;
@@ -607,6 +610,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 2F4732542E57478000A9F9DD /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
 			productName = FirebaseFirestore;
+		};
+		2FCE04532E77F766005811C3 /* FirebaseStorage */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 2F4732542E57478000A9F9DD /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseStorage;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

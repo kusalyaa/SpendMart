@@ -24,7 +24,7 @@ struct RootTabView: View {
             NavigationStack { ScanView() }
                 .tabItem { Label("Scan", systemImage: "qrcode.viewfinder") }
 
-            NavigationStack { DueView() }
+            NavigationStack { DueListView() }
                 .tabItem { Label("Due", systemImage: "calendar.badge.exclamationmark") }
 
             NavigationStack { SettingsView() }

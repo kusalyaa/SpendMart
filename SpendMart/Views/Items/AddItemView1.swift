@@ -6,7 +6,7 @@ import FirebaseFirestore
 enum ItemType: String, CaseIterable, Identifiable { case product = "Product", service = "Service"; var id: String { rawValue } }
 enum PayStatus: String, CaseIterable, Identifiable { case paid = "Paid", due = "To be paid"; var id: String { rawValue } }
 
-struct AddItemView: View {
+struct AddItemView1: View {
     // Optional presets (e.g., from Scan)
     var presetName: String = ""
     var presetAmountText: String = ""
