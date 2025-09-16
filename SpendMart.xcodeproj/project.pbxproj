@@ -10,6 +10,8 @@
 		2F4732562E57481800A9F9DD /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = 2F4732552E57481800A9F9DD /* FirebaseAuth */; };
 		2F4732582E57481800A9F9DD /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = 2F4732572E57481800A9F9DD /* FirebaseFirestore */; };
 		2FCE04542E77F766005811C3 /* FirebaseStorage in Frameworks */ = {isa = PBXBuildFile; productRef = 2FCE04532E77F766005811C3 /* FirebaseStorage */; };
+		2FCE04722E79A1B9005811C3 /* Vision.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 2FCE04702E79A1B9005811C3 /* Vision.framework */; };
+		2FCE04732E79A1B9005811C3 /* VisionKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 2FCE04712E79A1B9005811C3 /* VisionKit.framework */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -30,6 +32,8 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		2FCE04702E79A1B9005811C3 /* Vision.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Vision.framework; path = System/Library/Frameworks/Vision.framework; sourceTree = SDKROOT; };
+		2FCE04712E79A1B9005811C3 /* VisionKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = VisionKit.framework; path = System/Library/Frameworks/VisionKit.framework; sourceTree = SDKROOT; };
 		2FD8BB9F2E51921D002AE75D /* SpendMart.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SpendMart.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		2FD8BBAC2E51921F002AE75D /* SpendMartTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SpendMartTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		2FD8BBB62E51921F002AE75D /* SpendMartUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SpendMartUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -50,12 +54,20 @@
 			);
 			target = 2FD8BBB52E51921F002AE75D /* SpendMartUITests */;
 		};
+		2FCE046E2E79A0EC005811C3 /* Exceptions for "SpendMart" folder in "SpendMart" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 2FD8BB9E2E51921D002AE75D /* SpendMart */;
+		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		2FD8BBA12E51921D002AE75D /* SpendMart */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
+				2FCE046E2E79A0EC005811C3 /* Exceptions for "SpendMart" folder in "SpendMart" target */,
 				2F4732632E574E7600A9F9DD /* Exceptions for "SpendMart" folder in "SpendMartTests" target */,
 				2F4732642E574E7600A9F9DD /* Exceptions for "SpendMart" folder in "SpendMartUITests" target */,
 			);
@@ -79,8 +91,10 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				2FCE04722E79A1B9005811C3 /* Vision.framework in Frameworks */,
 				2F4732562E57481800A9F9DD /* FirebaseAuth in Frameworks */,
 				2F4732582E57481800A9F9DD /* FirebaseFirestore in Frameworks */,
+				2FCE04732E79A1B9005811C3 /* VisionKit.framework in Frameworks */,
 				2FCE04542E77F766005811C3 /* FirebaseStorage in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -102,12 +116,22 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		2FCE046F2E79A1B8005811C3 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				2FCE04702E79A1B9005811C3 /* Vision.framework */,
+				2FCE04712E79A1B9005811C3 /* VisionKit.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
 		2FD8BB962E51921D002AE75D = {
 			isa = PBXGroup;
 			children = (
 				2FD8BBA12E51921D002AE75D /* SpendMart */,
 				2FD8BBAF2E51921F002AE75D /* SpendMartTests */,
 				2FD8BBB92E51921F002AE75D /* SpendMartUITests */,
+				2FCE046F2E79A1B8005811C3 /* Frameworks */,
 				2FD8BBA02E51921D002AE75D /* Products */,
 			);
 			sourceTree = "<group>";
@@ -433,6 +457,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = SpendMart/Info.plist;
 				INFOPLIST_KEY_NSFaceIDUsageDescription = "SpendSmart uses Face ID to protect your financial data and unlock the app.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -461,6 +486,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = SpendMart/Info.plist;
 				INFOPLIST_KEY_NSFaceIDUsageDescription = "SpendSmart uses Face ID to protect your financial data and unlock the app.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;

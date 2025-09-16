@@ -1,7 +1,5 @@
 import SwiftUI
 
-// MARK: - Helpers
-
 private func lkr(_ v: Double) -> String {
     let f = NumberFormatter()
     f.numberStyle = .currency
@@ -10,88 +8,82 @@ private func lkr(_ v: Double) -> String {
     return f.string(from: NSNumber(value: v)) ?? "LKR \(Int(v))"
 }
 
-// MARK: - Home
-
 struct HomeView: View {
     @StateObject private var store = DashboardStore()
 
     var body: some View {
         NavigationStack {
             ScrollView(showsIndicators: false) {
-                VStack(alignment: .leading, spacing: 16) {
+                VStack(alignment: .leading, spacing: 20) {
 
-                    // Greeting (keep title in nav bar to avoid duplicate text)
-                    if !store.displayName.isEmpty {
-                        Text("Good morning, \(store.displayName)")
-                            .font(.headline)
-                            .foregroundColor(.appSecondaryTxt)
-                            .padding(.horizontal, 16)
-                            .padding(.top, 8)
+                    // Title + greeting
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Dashboard")
+                            .font(.system(size: 34, weight: .bold))
+                        if !store.displayName.isEmpty {
+                            Text("Good morning,")
+                                .foregroundStyle(.secondary)
+                            Text(store.displayName)
+                                .font(.title3).fontWeight(.semibold)
+                        }
                     }
+                    .padding(.horizontal, 16)
+                    .padding(.top, 8)
 
-                    // ===== BLUE BALANCE CARD =====
+                    // BLUE CARD
                     BalanceCard(
-                        total: store.net,             // Net After Expenses
+                        total: store.net,             // "Total Balance" = Net After Expenses
                         income: store.income,
                         expense: store.expenses,
                         freeCash: store.freeCash
                     )
                     .padding(.horizontal, 16)
 
-                    // ===== TIGHT, PERFECTLY ALIGNED 2-CELL CARD =====
-                    StatsRowCard(
-                        leftTitle: "Emergency Fund",
-                        leftValue: store.emergencyFund,
-                        // ⚠️ Per your request: keep the SAME value you had before,
-                        // only rename the label to "Budget Spent".
-                        rightTitle: "Budget Spent",
-                        rightValue: store.budgetRemaining
-                    )
-                    .padding(.horizontal, 16)
-
-                    // ===== COMPACT GAUGES (Budget & Credit) =====
-                    InsightCard {
-                        HStack(spacing: 12) {
-                            MiniGauge(
-                                title: "Budget",
-                                current: store.budgetSpent,
-                                total: max(store.budget, 1),
-                                tint: Color.appBrand
-                            )
-                            MiniGauge(
-                                title: "Credit",
-                                current: store.creditUsed,
-                                total: max(store.creditLimit, 1),
-                                tint: Color.orange
-                            )
-                        }
+                    // Additional Info Cards
+                    HStack(spacing: 12) {
+                        InfoCard(title: "Emergency Fund", amount: store.emergencyFund)
+                        InfoCard(title: "Budget Spent", amount: store.budgetSpent)
                     }
                     .padding(.horizontal, 16)
 
-                    // ===== QUICK ACTIONS =====
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Quick Actions")
-                            .font(.headline)
-                            .padding(.horizontal, 4)
+                    // PROGRESS ROWS
+                    VStack(spacing: 12) {
+                        ProgressRow(
+                            title: "Monthly Budget",
+                            current: store.budgetRemaining,
+                            total: max(store.budget, 1),
+                            trailingText: "\(lkr(store.budgetRemaining)) / \(lkr(store.budget))",
+                            progress: store.budget > 0 ? (store.budget - store.budgetRemaining) / store.budget : 0
+                        )
 
-                        QuickActionsRow()
+                        ProgressRow(
+                            title: "Credit Limit",
+                            current: store.creditAvailable,
+                            total: max(store.creditLimit, 1),
+                            trailingText: "\(lkr(store.creditAvailable)) / \(lkr(store.creditLimit))",
+                            progress: store.creditLimit > 0 ? store.creditAvailable / store.creditLimit : 0
+                        )
                     }
                     .padding(.horizontal, 16)
-                    .padding(.bottom, 24)
+
+                    // QUICK ACTIONS
+                    Text("Quick Actions")
+                        .font(.headline)
+                        .padding(.horizontal, 16)
+                        .padding(.top, 8)
+
+                    QuickActionsRow()
+                        .padding(.horizontal, 16)
+                        .padding(.bottom, 24)
                 }
             }
-            .background(Color(.systemGroupedBackground))
-            .navigationTitle("Dashboard")
-            .navigationBarTitleDisplayMode(.large)
         }
         .onAppear { store.bind() }
-        .tint(Color.appBrand)
     }
 }
 
-// MARK: - Cards & Components
+// MARK: - Components
 
-/// Blue card with a small Free Cash badge.
 fileprivate struct BalanceCard: View {
     var total: Double
     var income: Double
@@ -100,154 +92,116 @@ fileprivate struct BalanceCard: View {
 
     var body: some View {
         ZStack {
-            RoundedRectangle(cornerRadius: 22)
+            RoundedRectangle(cornerRadius: 20)
                 .fill(
                     LinearGradient(
-                        colors: [Color.appBrand, Color.appBrand.opacity(0.85)],
+                        colors: [Color.blue, Color.blue.opacity(0.8)],
                         startPoint: .topLeading, endPoint: .bottomTrailing
                     )
                 )
-            VStack(alignment: .leading, spacing: 10) {
+            VStack(alignment: .leading, spacing: 12) {
                 Text("Total Balance")
-                    .foregroundColor(.white.opacity(0.9))
+                    .foregroundStyle(.white.opacity(0.9))
+                    .font(.subheadline)
+                
                 Text(lkr(total))
                     .font(.system(size: 28, weight: .bold))
-                    .foregroundColor(.white)
+                    .foregroundStyle(.white)
 
-                HStack {
+                HStack(spacing: 20) {
                     VStack(alignment: .leading, spacing: 4) {
-                        Text("Income").foregroundColor(.white.opacity(0.9))
-                        Text(lkr(income)).foregroundColor(.white).fontWeight(.semibold)
+                        Text("Income")
+                            .foregroundStyle(.white.opacity(0.9))
+                            .font(.caption)
+                        Text(lkr(income))
+                            .foregroundStyle(.white)
+                            .fontWeight(.semibold)
+                            .font(.subheadline)
                     }
-                    Spacer()
+                    
                     VStack(alignment: .leading, spacing: 4) {
-                        Text("Expense").foregroundColor(.white.opacity(0.9))
-                        Text(lkr(expense)).foregroundColor(.white).fontWeight(.semibold)
+                        Text("Expense")
+                            .foregroundStyle(.white.opacity(0.9))
+                            .font(.caption)
+                        Text(lkr(expense))
+                            .foregroundStyle(.white)
+                            .fontWeight(.semibold)
+                            .font(.subheadline)
                     }
-                }
-                .padding(.top, 8)
-
-                // Free Cash badge
-                HStack {
+                    
                     Spacer()
-                    HStack(spacing: 6) {
-                        Image(systemName: "wallet.pass")
-                            .imageScale(.small)
-                        Text("Free Cash: \(lkr(max(freeCash, 0)))")
-                            .font(.footnote).bold()
-                    }
-                    .foregroundColor(.white)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 6)
-                    .background(.white.opacity(0.15))
-                    .clipShape(Capsule())
                 }
+                
+                // Free Cash section with proper spacing
+                HStack {
+                    Image(systemName: "banknote.fill")
+                        .foregroundStyle(.white.opacity(0.9))
+                        .font(.caption)
+                    Text("Free Cash: \(lkr(freeCash))")
+                        .foregroundStyle(.white.opacity(0.9))
+                        .font(.caption)
+                        .fontWeight(.medium)
+                    Spacer()
+                }
+                .padding(.top, 4)
             }
-            .padding(16)
+            .padding(20)
         }
         .frame(height: 160)
-        .shadow(color: Color.appBrand.opacity(0.25), radius: 12, x: 0, y: 6)
     }
 }
 
-/// One shared card with two equal cells + a subtle divider, so alignment is perfect.
-fileprivate struct StatsRowCard: View {
-    var leftTitle: String
-    var leftValue: Double
-    var rightTitle: String
-    var rightValue: Double
-
-    var body: some View {
-        HStack(spacing: 0) {
-            StatCell(title: leftTitle, value: leftValue)
-            Rectangle()
-                .fill(Color.black.opacity(0.05))
-                .frame(width: 1)
-            StatCell(title: rightTitle, value: rightValue)
-        }
-        .frame(height: 96) // common fixed height for perfect alignment
-        .background(Color(.secondarySystemBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-        .shadow(color: .black.opacity(0.05), radius: 6, x: 0, y: 1)
-    }
-}
-
-fileprivate struct StatCell: View {
+fileprivate struct InfoCard: View {
     var title: String
-    var value: Double
+    var amount: Double
+    
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             Text(title)
                 .font(.caption)
-                .foregroundColor(.appSecondaryTxt)
-            Text(lkr(value))
-                .font(.title3.bold())
-                .lineLimit(1)
-                .minimumScaleFactor(0.8)
+                .foregroundStyle(.secondary)
+            Text(lkr(amount))
+                .font(.title3)
+                .fontWeight(.bold)
+                .foregroundStyle(.primary)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
-        .padding(12)
-        .background(.clear) // both halves share the outer card
-    }
-}
-
-fileprivate struct InsightCard<Content: View>: View {
-    @ViewBuilder var content: Content
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            content
-        }
-        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(16)
         .background(Color(.secondarySystemBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-        .shadow(color: .black.opacity(0.05), radius: 6, x: 0, y: 1)
+        .cornerRadius(12)
     }
 }
 
-// MARK: - Mini circular gauges
-
-fileprivate struct MiniGauge: View {
+fileprivate struct ProgressRow: View {
     var title: String
     var current: Double
     var total: Double
-    var tint: Color
-
-    private var pct: Double {
-        guard total > 0 else { return 0 }
-        return min(max(current / total, 0), 1)
-    }
+    var trailingText: String?
+    var progress: Double
 
     var body: some View {
-        VStack(spacing: 8) {
-            ZStack {
-                Gauge(value: current, in: 0...max(total, 1)) { }
-                    .gaugeStyle(.accessoryCircular)
-                    .tint(tint)
-                    .frame(width: 72, height: 72)
-
-                VStack(spacing: 0) {
-                    Text("\(Int(pct * 100))%")
-                        .font(.subheadline).bold()
-                    Text(title)
-                        .font(.caption2)
-                        .foregroundColor(.appSecondaryTxt)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.7)
-                }
+        VStack(spacing: 10) {
+            HStack {
+                Text(title)
+                    .foregroundStyle(.secondary)
+                    .font(.subheadline)
+                Spacer()
+                Text(trailingText ?? "\(lkr(current)) / \(lkr(total))")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.trailing)
             }
-            Text("\(lkr(current)) / \(lkr(total))")
-                .font(.caption2)
-                .foregroundColor(.appSecondaryTxt)
+            
+            ProgressView(value: min(max(progress, 0), 1))
+                .tint(.blue)
+                .frame(height: 6)
+                .clipShape(RoundedRectangle(cornerRadius: 6))
         }
-        .frame(maxWidth: .infinity)
-        .padding(10)
+        .padding(16)
         .background(Color(.secondarySystemBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-        .shadow(color: .black.opacity(0.05), radius: 4, x: 0, y: 1)
+        .cornerRadius(16)
     }
 }
-
-// MARK: - Quick Actions
 
 fileprivate struct QuickActionsRow: View {
     var body: some View {
@@ -264,21 +218,28 @@ fileprivate struct ActionTile: View {
     var subtitle: String
     var color: Color
     var system: String
+    
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: 8) {
             ZStack {
                 RoundedRectangle(cornerRadius: 14).fill(color.opacity(0.12))
                 Image(systemName: system)
-                    .font(.title2).foregroundColor(color)
+                    .font(.title2).foregroundStyle(color)
             }
-            .frame(width: 72, height: 72)
-            Text(title).fontWeight(.semibold)
-            Text(subtitle).font(.footnote).foregroundColor(.appSecondaryTxt)
+            .frame(width: 70, height: 70)
+            
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .fontWeight(.semibold)
+                    .font(.subheadline)
+                Text(subtitle)
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            }
         }
-        .padding(12)
+        .padding(14)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Color(.secondarySystemBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-        .shadow(color: .black.opacity(0.05), radius: 6, x: 0, y: 1)
+        .cornerRadius(16)
     }
 }

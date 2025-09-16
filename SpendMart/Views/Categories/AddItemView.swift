@@ -9,6 +9,12 @@ struct AddItemView: View {
     var preselectedCategoryName: String? = nil
     var preselectedCategoryColorHex: String? = nil
 
+    // ✅ New preset values (from ScanView)
+    var presetTitle: String? = nil
+    var presetDescription: String? = nil
+    var presetAmount: String? = nil
+    var presetDate: Date? = nil
+
     @Environment(\.dismiss) private var dismiss
     private let db = Firestore.firestore()
 
@@ -195,11 +201,30 @@ struct AddItemView: View {
                message: { Text(errorText ?? "") })
         .onAppear {
             NotificationManager.shared.requestAuthIfNeeded()
+
+            // ✅ Fill presets if provided
+            if let presetTitle = presetTitle, !presetTitle.isEmpty {
+                title = presetTitle
+            }
+            if let presetDescription = presetDescription, !presetDescription.isEmpty {
+                description = presetDescription
+            }
+            if let presetAmount = presetAmount, !presetAmount.isEmpty {
+                amountText = presetAmount
+            }
+            if let presetDate = presetDate {
+                date = presetDate
+            }
+
             if selectedCategoryId == nil {
                 if let pid = preselectedCategoryId {
-                    selectedCategoryId = pid; selectedCategoryName = preselectedCategoryName; selectedCategoryColorHex = preselectedCategoryColorHex
+                    selectedCategoryId = pid
+                    selectedCategoryName = preselectedCategoryName
+                    selectedCategoryColorHex = preselectedCategoryColorHex
                 } else if let first = categoriesStore.categories.first {
-                    selectedCategoryId = first.id; selectedCategoryName = first.name; selectedCategoryColorHex = first.colorHex
+                    selectedCategoryId = first.id
+                    selectedCategoryName = first.name
+                    selectedCategoryColorHex = first.colorHex
                 }
             }
         }
@@ -288,9 +313,9 @@ struct AddItemView: View {
                     data["creditPerInstallment"] = cper
 
                     itemIdWritten = try await writeItemAndEffects(uid: uid, catId: catId, itemData: data) {
-                        try await incrementWalletBalance(uid: uid, by: -walletPaid)        // ↓ wallet
-                        try await incrementBudgetSpent(uid: uid, by: walletPaid)           // ↑ spent (for reporting)
-                        try await incrementCreditUsed(uid: uid, by: ctotal)                 // ↑ credit used
+                        try await incrementWalletBalance(uid: uid, by: -walletPaid)
+                        try await incrementBudgetSpent(uid: uid, by: walletPaid)
+                        try await incrementCreditUsed(uid: uid, by: ctotal)
                     }
 
                     try await createDues(uid: uid, itemId: itemIdWritten, categoryId: catId,
@@ -300,7 +325,6 @@ struct AddItemView: View {
                 } else {
                     data["paymentMethod"] = "Wallet"; data["status"] = status
                     itemIdWritten = try await writeItemAndEffects(uid: uid, catId: catId, itemData: data) {
-                        // deduct directly from wallet; also mark as spending for reports
                         try await incrementWalletBalance(uid: uid, by: -amt)
                         if status == "Paid" || status == "Pay" {
                             try await incrementBudgetSpent(uid: uid, by: amt)
@@ -326,8 +350,8 @@ struct AddItemView: View {
 
                     itemIdWritten = try await writeItemAndEffects(uid: uid, catId: catId, itemData: data) {
                         if walletUsed > 0 {
-                            try await incrementWalletBalance(uid: uid, by: -walletUsed) // ↓ wallet
-                            try await incrementBudgetSpent(uid: uid, by: walletUsed)    // ↑ spent
+                            try await incrementWalletBalance(uid: uid, by: -walletUsed)
+                            try await incrementBudgetSpent(uid: uid, by: walletUsed)
                         }
                         if creditImmediate > 0 { try await incrementCreditUsed(uid: uid, by: creditImmediate) }
                         try await incrementCreditUsed(uid: uid, by: creditRemaining)
@@ -391,7 +415,6 @@ struct AddItemView: View {
         try await db.collection("users").document(uid).updateData(["wallet.balance": FieldValue.increment(amount)])
     }
 
-    /// ✅ Wallet balance (independent of budget)
     private func fetchWalletBalance(uid: String) async throws -> Double {
         let snap = try await db.collection("users").document(uid).getDocument()
         let wallet = (snap.data()?["wallet"] as? [String: Any]) ?? [:]
@@ -408,7 +431,6 @@ struct AddItemView: View {
         try await ref.updateData(["financials.netAfterExpenses": (income - expenses) - spent])
     }
 
-    // Dues + notifications (same as before)
     private func createDues(uid: String, itemId: String, categoryId: String, itemTitle: String,
                             totalMonths: Int, perInstallment: Double, purchaseDate: Date, firstPaidNow: Bool) async throws {
         guard totalMonths > 0 else { return }
