@@ -3,10 +3,12 @@ import LocalAuthentication
 enum BiometryKind { case none, touchID, faceID }
 
 enum BiometricAuth {
+
+    /// Use the biometrics policy to get a correct biometryType.
     static func available() -> BiometryKind {
         let ctx = LAContext()
         var err: NSError?
-        if ctx.canEvaluatePolicy(.deviceOwnerAuthentication, error: &err) {
+        if ctx.canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: &err) {
             switch ctx.biometryType {
             case .faceID:  return .faceID
             case .touchID: return .touchID
@@ -16,27 +18,25 @@ enum BiometricAuth {
         return .none
     }
 
+    /// First try *only* biometrics. Passcode fallback is opt-in via `allowPasscode`.
     static func authenticate(
-        reason: String = "Unlock SpendSmart",
-        allowPasscode: Bool = true,
+        allowPasscode: Bool = false,
+        reason: String = "Unlock SpendMart",
         completion: @escaping (Bool) -> Void
     ) {
         let ctx = LAContext()
-        ctx.localizedFallbackTitle = allowPasscode ? "Use Passcode" : ""
+        ctx.localizedCancelTitle = "Cancel"
+        // Hide "Enter Password" on the first prompt if we don't want fallback yet
+        if !allowPasscode { ctx.localizedFallbackTitle = "" }
 
         var error: NSError?
-        // Prefer passcode + biometrics. If not available, try biometrics-only. Otherwise fail.
-        var policy: LAPolicy = allowPasscode ? .deviceOwnerAuthentication
-                                             : .deviceOwnerAuthenticationWithBiometrics
+        let policy: LAPolicy = allowPasscode
+            ? .deviceOwnerAuthentication
+            : .deviceOwnerAuthenticationWithBiometrics
 
-        if !ctx.canEvaluatePolicy(policy, error: &error) {
-            if allowPasscode,
-               ctx.canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: &error) {
-                policy = .deviceOwnerAuthenticationWithBiometrics
-            } else {
-                DispatchQueue.main.async { completion(false) }
-                return
-            }
+        guard ctx.canEvaluatePolicy(policy, error: &error) else {
+            DispatchQueue.main.async { completion(false) }
+            return
         }
 
         ctx.evaluatePolicy(policy, localizedReason: reason) { success, _ in

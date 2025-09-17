@@ -81,6 +81,10 @@ struct SettingsView: View {
     @State private var goEmergency = false
     @State private var goDocuments = false
 
+    // Added: minimal state + AppSession (used by your auth flow)
+    @EnvironmentObject var appSession: AppSession
+    @State private var showSignOutConfirm = false
+
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
@@ -192,6 +196,36 @@ struct SettingsView: View {
                         .padding(20)
                         .background(Color(.secondarySystemBackground))
                         .cornerRadius(16)
+
+                        // Account (Sign out)
+                        VStack(alignment: .leading, spacing: 16) {
+                            Text("Account")
+                                .font(.headline)
+                                .fontWeight(.bold)
+                                .foregroundColor(.primary)
+
+                            Button(role: .destructive) {
+                                showSignOutConfirm = true
+                            } label: {
+                                HStack {
+                                    Image(systemName: "rectangle.portrait.and.arrow.right")
+                                        .font(.headline)
+                                    Text("Sign out")
+                                        .font(.headline)
+                                        .fontWeight(.semibold)
+                                    Spacer()
+                                }
+                                .padding()
+                                .background(
+                                    RoundedRectangle(cornerRadius: 12)
+                                        .fill(Color.red.opacity(0.08))
+                                )
+                            }
+                            .buttonStyle(.plain)
+                        }
+                        .padding(20)
+                        .background(Color(.secondarySystemBackground))
+                        .cornerRadius(16)
                     }
                     .padding(.horizontal, 16)
                     .padding(.bottom, 20)
@@ -209,6 +243,13 @@ struct SettingsView: View {
         }
         .navigationDestination(isPresented: $goDocuments) {
             ManageDocumentsView()
+        }
+        // Sign-out confirmation
+        .alert("Sign out?", isPresented: $showSignOutConfirm) {
+            Button("Sign out", role: .destructive) { signOut() }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("You’ll need to authenticate again to access your data.")
         }
     }
 
@@ -307,4 +348,16 @@ struct SettingsView: View {
         }
         .buttonStyle(PlainButtonStyle())
     }
+
+    @AppStorage("appLockUnlocked") private var unlocked: Bool = false
+
+    private func signOut() {
+        do {
+            try Auth.auth().signOut()
+            unlocked = false   // reset gate on sign-out
+        } catch {
+            print("Sign out failed: \(error.localizedDescription)")
+        }
+    }
+
 }

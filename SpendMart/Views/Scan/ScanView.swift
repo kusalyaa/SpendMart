@@ -6,14 +6,10 @@ import UIKit
 struct ScanView: View {
     @Environment(\.dismiss) private var dismiss
 
-    // Navigation
     @State private var navigateToAddItem = false
-
-    // Keep a STRONG reference to the coordinator so delegate callbacks fire
     @State private var coordinator: ScannerCoordinator?
-    @State private var hasPresented = false   // present only once per appear
+    @State private var hasPresented = false
 
-    // Extracted values from Vision OCR to feed AddItemView
     @State private var extractedTitle: String?
     @State private var extractedDescription: String?
     @State private var extractedAmount: String?
@@ -31,6 +27,9 @@ struct ScanView: View {
                 }
                 .navigationDestination(isPresented: $navigateToAddItem) {
                     AddItemView(
+                        preselectedCategoryId: nil,
+                        preselectedCategoryName: nil,
+                        preselectedCategoryColorHex: nil,
                         presetTitle: extractedTitle,
                         presetDescription: extractedDescription,
                         presetAmount: extractedAmount,
@@ -45,13 +44,11 @@ struct ScanView: View {
         self.coordinator = c
 
         #if targetEnvironment(simulator)
-        print("🎛 Presenting photo picker (simulator)")
         let picker = UIImagePickerController()
         picker.sourceType = .photoLibrary
         picker.delegate = c
         UIApplication.presentOnRoot(picker)
         #else
-        print("📄 Presenting VisionKit document scanner (device)")
         let scanner = VNDocumentCameraViewController()
         scanner.delegate = c
         UIApplication.presentOnRoot(scanner)
@@ -59,100 +56,241 @@ struct ScanView: View {
     }
 
     private func handleScannedImage(_ image: UIImage?) {
-        print("📸 handleScannedImage called, image? \(image != nil)")
+        defer {
+            self.coordinator = nil
+            self.hasPresented = false
+        }
         guard let img = image else {
-            // User canceled or no image -> go back
             dismiss()
             return
         }
-        print("🖼️ picked image size: \(img.size)")
         recognizeText(from: img)
     }
 
-    // MARK: - Vision OCR
     private func recognizeText(from image: UIImage) {
-        guard let cgImage = image.cgImage else { print("⚠️ No CGImage"); return }
+        guard let cgImage = image.cgImage else {
+            dismiss()
+            return
+        }
 
-        let request = VNRecognizeTextRequest { (request, error) in
-            if let error = error { print("❌ OCR error:", error.localizedDescription) }
-            guard let observations = request.results as? [VNRecognizedTextObservation] else {
-                print("⚠️ No OCR results"); return
-            }
-            let recognizedStrings = observations.compactMap { $0.topCandidates(1).first?.string }
-            print("✅ OCR Results:", recognizedStrings)
-
-            // --- Improved parsing ---
-            var foundAmount: String?
-            var foundDate: Date?
-            var foundTitle: String?
-            var snippetLines: [String] = []
-
-            for raw in recognizedStrings {
-                let text = raw.trimmingCharacters(in: .whitespacesAndNewlines)
-                guard !text.isEmpty else { continue }
-                snippetLines.append(text)
-
-                // Amount: handle Rs/LKR, commas, dot/decimal
-                // Examples: "Rs 1,250.00", "LKR 1250", "1,250", "1250.50"
-                if foundAmount == nil,
-                   let m = text.range(of: #"(?:Rs\.?\s*|LKR\s*)?([0-9]{1,3}(?:,[0-9]{3})*(?:\.[0-9]{1,2})?|[0-9]+(?:\.[0-9]{1,2})?)"#,
-                                       options: .regularExpression) {
-                    var amt = String(text[m])
-                    if let num = amt.range(of: #"[0-9]{1,3}(?:,[0-9]{3})*(?:\.[0-9]{1,2})?|[0-9]+(?:\.[0-9]{1,2})?"#,
-                                          options: .regularExpression) {
-                        amt = String(amt[num])
-                    }
-                    // normalize: remove thousands commas, keep dot decimal
-                    amt = amt.replacingOccurrences(of: ",", with: "")
-                    foundAmount = amt
-                }
-
-                // Date: try multiple formats
-                if foundDate == nil, let d = tryParseDate(from: text) {
-                    foundDate = d
-                }
-
-                // Title: take the first meaningful line
-                if foundTitle == nil {
-                    foundTitle = text
-                }
+        let request = VNRecognizeTextRequest { request, _ in
+            guard let observations = request.results as? [VNRecognizedTextObservation], !observations.isEmpty else {
+                DispatchQueue.main.async { self.navigateToAddItem = true }
+                return
             }
 
-            let descSnippet = snippetLines.prefix(3).joined(separator: " · ")
+            let recognizedStrings = observations
+                .compactMap { $0.topCandidates(1).first?.string }
+                .map { Self.cleanedLine($0) }
 
-            DispatchQueue.main.async {
-                self.extractedTitle        = foundTitle ?? "Scanned Item"
-                self.extractedDescription  = descSnippet.isEmpty ? nil : descSnippet
-                self.extractedAmount       = foundAmount ?? ""     // AddItemView ignores empty
-                self.extractedDate         = foundDate ?? Date()
-                print("➡️ Navigating to AddItemView with title:", self.extractedTitle ?? "nil")
-                self.navigateToAddItem = true
-            }
+            self.parseAndRoute(from: recognizedStrings)
         }
 
         request.recognitionLevel = .accurate
         request.usesLanguageCorrection = true
-        // Optionally hint language(s) if your receipts are English/Sinhala/Tamil
-        // request.recognitionLanguages = ["en", "si", "ta"]
+        request.minimumTextHeight = 0.02
 
         let handler = VNImageRequestHandler(cgImage: cgImage, options: [:])
-        do {
-            try handler.perform([request])
-        } catch {
-            print("❌ Vision perform error:", error.localizedDescription)
+        DispatchQueue.global(qos: .userInitiated).async {
+            try? handler.perform([request])
         }
     }
 
-    private func tryParseDate(from text: String) -> Date? {
-        // Extend as needed
-        let formats = ["dd/MM/yyyy", "MM/dd/yyyy", "yyyy-MM-dd", "dd-MM-yyyy", "dd.MM.yyyy"]
-        let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "en_US_POSIX")
-        for f in formats {
-            formatter.dateFormat = f
-            if let d = formatter.date(from: text) { return d }
+    private func parseAndRoute(from linesIn: [String]) {
+        let lines = linesIn
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+
+        let (title, titleIdx) = guessVendorTitleWithIndex(from: lines)
+        let foundDate = detectDate(in: lines)
+
+        let amountCands = collectAmountCandidates(in: lines)
+        let amountBest = strictTotalAmount(from: amountCands, lines: lines) ??
+                         bestAmountFallback(from: amountCands)
+
+        let desc = buildStoreMetaSnippet(from: lines, titleIndex: titleIdx, date: foundDate)
+
+        DispatchQueue.main.async {
+            self.extractedTitle = title
+            self.extractedDescription = desc
+            self.extractedAmount = amountBest?.normalizedString
+            self.extractedDate = foundDate
+            self.navigateToAddItem = true
+        }
+    }
+
+    private static func cleanedLine(_ s: String) -> String {
+        var t = s.replacingOccurrences(of: #"[*•]{2,}"#, with: "", options: .regularExpression)
+        t = t.replacingOccurrences(of: #"-{2,}"#, with: "", options: .regularExpression)
+        t = t.replacingOccurrences(of: #"_{2,}"#, with: "", options: .regularExpression)
+        return t.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private func detectDate(in lines: [String]) -> Date? {
+        let fmts = ["dd/MM/yyyy","MM/dd/yyyy","yyyy-MM-dd","dd-MM-yyyy","dd.MM.yyyy","dd.MM.yy","d/M/yy","d-M-yy","dd/MM/yy"]
+        let df = DateFormatter()
+        df.locale = Locale(identifier: "en_US_POSIX")
+
+        for line in lines.prefix(12) {
+            for f in fmts {
+                df.dateFormat = f
+                if let d = df.date(from: line) { return d }
+            }
+        }
+        let full = lines.joined(separator: " ")
+        guard let detector = try? NSDataDetector(types: NSTextCheckingResult.CheckingType.date.rawValue) else { return nil }
+        let range = NSRange(full.startIndex..<full.endIndex, in: full)
+        return detector.matches(in: full, options: [], range: range).first?.date
+    }
+
+    private struct AmountCandidate {
+        let value: Decimal
+        let normalizedString: String
+        let lineIndex: Int
+        let raw: String
+    }
+
+    private func collectAmountCandidates(in lines: [String]) -> [AmountCandidate] {
+        let pattern = #"""
+        (?ix)
+        (?:^|[\s:])
+        (?:USD|CHF|LKR|Rs\.?|₨|\$|€|£)?\s*
+        (
+          \d{1,3}(?:[.,]\d{3})*(?:[.,]\d{2})
+          | \d+(?:[.,]\d{2})
+          | \d{1,3}(?:[.,]\d{3})+
+          | \d+
+        )
+        \s*(?:USD|CHF|LKR|Rs\.?|₨|\$|€|£)?
+        """#
+
+        var out: [AmountCandidate] = []
+        for (i, line) in lines.enumerated() {
+            let ns = line as NSString
+            guard let regex = try? NSRegularExpression(pattern: pattern, options: []) else { continue }
+            regex.enumerateMatches(in: line, options: [], range: NSRange(location: 0, length: ns.length)) { match, _, _ in
+                guard let match = match, match.numberOfRanges >= 2 else { return }
+                let raw = ns.substring(with: match.range(at: 1))
+                if let normalized = normalizeAmountString(raw),
+                   let dec = Decimal(string: normalized) {
+                    out.append(AmountCandidate(value: dec, normalizedString: normalized, lineIndex: i, raw: raw))
+                }
+            }
+        }
+        return out
+    }
+
+    private func normalizeAmountString(_ raw: String) -> String? {
+        var s = raw.trimmingCharacters(in: .whitespaces)
+
+        let lastDot = s.lastIndex(of: ".")
+        let lastComma = s.lastIndex(of: ",")
+        var decimalSep: Character? = nil
+        if let d = lastDot, let c = lastComma { decimalSep = (d > c) ? "." : "," }
+        else if lastDot != nil { decimalSep = "." }
+        else if lastComma != nil { decimalSep = "," }
+
+        if let sep = decimalSep {
+            let other: Character = (sep == ".") ? "," : "."
+            s.removeAll(where: { $0 == other })
+            if sep == "," { s = s.replacingOccurrences(of: ",", with: ".") }
+        }
+
+        if s.contains(".") == false { s.append(".00") }
+        else {
+            let comps = s.split(separator: ".", maxSplits: 1, omittingEmptySubsequences: false)
+            if comps.count == 2 {
+                var frac = String(comps[1])
+                if frac.count == 1 { frac.append("0") }
+                else if frac.count > 2 { frac = String(frac.prefix(2)) }
+                s = comps[0] + "." + frac
+            }
+        }
+        return s
+    }
+
+    private func strictTotalAmount(from cands: [AmountCandidate], lines: [String]) -> AmountCandidate? {
+        guard !cands.isEmpty else { return nil }
+        let totalWords = ["TOTAL AMOUNT", "GRAND TOTAL", "AMOUNT DUE", "BALANCE DUE", "TOTAL:" , "TOTAL"].map { $0.uppercased() }
+        let excludeWords = ["CASH", "CHANGE", "TENDERED", "PAID", "CARD", "BANK CARD", "TIP",
+                            "APPROVAL", "RECEIPT", "INVOICE", "RECHNR", "NO.", "NR"]
+
+        func amounts(inLine idx: Int) -> [AmountCandidate] {
+            let allowed = excludeWords.allSatisfy { !lines[idx].uppercased().contains($0) }
+            if !allowed { return [] }
+            return cands.filter { $0.lineIndex == idx }.sorted { $0.value > $1.value }
+        }
+
+        for (i, s) in lines.enumerated() {
+            let up = s.uppercased()
+            guard totalWords.contains(where: { up.contains($0) }) else { continue }
+
+            if let pick = amounts(inLine: i).first { return pick }
+
+            for nxt in (i+1)...min(i+5, lines.count-1) {
+                let upNext = lines[nxt].uppercased()
+                if excludeWords.contains(where: { upNext.contains($0) }) { continue }
+                if let pick = amounts(inLine: nxt).first { return pick }
+            }
         }
         return nil
+    }
+
+    private func bestAmountFallback(from cands: [AmountCandidate]) -> AmountCandidate? {
+        return cands.sorted(by: { $0.value > $1.value }).first
+    }
+
+    private func guessVendorTitleWithIndex(from lines: [String]) -> (String?, Int?) {
+        let ignore = ["RECEIPT","INVOICE","TERMINAL","APPROVAL","BANK CARD","CARD","CASH","CHANGE","TOTAL","AMOUNT","SUBTOTAL","TAX","VAT","MWST","MWST.","INCL.","BALANCE","THANK YOU","TABLE","TISCH","BARCODE"]
+        let amountRegex = try! NSRegularExpression(pattern: #"(USD|CHF|LKR|Rs\.?|₨|\$|€|£)|\d"#, options: .caseInsensitive)
+
+        for (idx, line) in lines.prefix(10).enumerated() {
+            let up = line.uppercased()
+            if ignore.contains(where: { up.contains($0) }) { continue }
+            if amountRegex.firstMatch(in: line, options: [], range: NSRange(location: 0, length: line.utf16.count)) != nil { continue }
+            if line.count >= 3, line.rangeOfCharacter(from: .letters) != nil {
+                return (line, idx)
+            }
+        }
+        if let idx = lines.firstIndex(where: { !$0.isEmpty && $0.rangeOfCharacter(from: .letters) != nil }) {
+            return (lines[idx], idx)
+        }
+        return ("Receipt", nil)
+    }
+
+    private func buildStoreMetaSnippet(from lines: [String], titleIndex: Int?, date: Date?) -> String? {
+        guard let tIdx = titleIndex else { return nil }
+
+        let metaKeys = ["TERMINAL", "TERMINAL#", "RECEIPT", "RECHNR", "TABLE", "TISCH", "APPROVAL", "CASHIER", "REGISTER", "LANE"]
+        var pieces: [String] = []
+
+        for i in (tIdx+1)..<min(lines.count, tIdx+6) {
+            let ln = lines[i]
+            let up = ln.uppercased()
+            if metaKeys.contains(where: { up.contains($0) }) {
+                pieces.append(String(ln.prefix(40)))
+                if pieces.count == 2 { break }
+            }
+        }
+
+        if pieces.isEmpty, tIdx + 1 < lines.count {
+            let candidate = lines[tIdx + 1]
+            let hasAmount = candidate.range(of: #"(USD|CHF|LKR|Rs\.?|₨|\$|€|£)|\d+[.,]\d{2}\b"#, options: .regularExpression) != nil
+            if !hasAmount && candidate.count <= 40 {
+                pieces.append(candidate)
+            }
+        }
+
+        if let d = date {
+            let df = DateFormatter()
+            df.locale = Locale(identifier: "en_US_POSIX")
+            df.dateStyle = .short
+            df.timeStyle = .short
+            pieces.append(df.string(from: d))
+        }
+
+        guard !pieces.isEmpty else { return nil }
+        return String(pieces.joined(separator: " · ").prefix(60))
     }
 }
 
@@ -168,42 +306,47 @@ final class ScannerCoordinator: NSObject,
         self.onFinish = onFinish
     }
 
-    // Photo Library (simulator)
     func imagePickerController(_ picker: UIImagePickerController,
                                didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey : Any]) {
-        print("📥 Picker didFinish, info keys:", info.keys.map { $0.rawValue })
-        let image = info[.originalImage] as? UIImage
-        picker.dismiss(animated: true) { self.onFinish(image) }
+        var img: UIImage?
+        if let edited = info[.editedImage] as? UIImage { img = edited }
+        else if let original = info[.originalImage] as? UIImage { img = original }
+        picker.dismiss(animated: true) { self.onFinish(img) }
     }
 
     func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
-        print("🚫 Picker canceled")
         picker.dismiss(animated: true) { self.onFinish(nil) }
     }
 
-    // VisionKit (device)
-    func documentCameraViewController(_ controller: VNDocumentCameraViewController, didFinishWith scan: VNDocumentCameraScan) {
-        print("📄 VisionKit didFinish, pages:", scan.pageCount)
-        if scan.pageCount > 0 {
-            let image = scan.imageOfPage(at: 0)
-            controller.dismiss(animated: true) { self.onFinish(image) }
-        } else {
-            controller.dismiss(animated: true) { self.onFinish(nil) }
-        }
+    #if !targetEnvironment(simulator)
+    func documentCameraViewController(_ controller: VNDocumentCameraViewController,
+                                      didFinishWith scan: VNDocumentCameraScan) {
+        let img = (scan.pageCount > 0) ? scan.imageOfPage(at: 0) : nil
+        controller.dismiss(animated: true) { self.onFinish(img) }
     }
 
     func documentCameraViewControllerDidCancel(_ controller: VNDocumentCameraViewController) {
-        print("🚫 VisionKit canceled")
         controller.dismiss(animated: true) { self.onFinish(nil) }
     }
+
+    func documentCameraViewController(_ controller: VNDocumentCameraViewController,
+                                      didFailWithError error: Error) {
+        controller.dismiss(animated: true) { self.onFinish(nil) }
+    }
+    #endif
 }
 
 // MARK: - Present helper
 extension UIApplication {
     static func presentOnRoot(_ vc: UIViewController) {
-        guard let root = shared.connectedScenes
-            .compactMap({ ($0 as? UIWindowScene)?.keyWindow })
-            .first?.rootViewController else { return }
-        root.present(vc, animated: true)
+        let rootVC: UIViewController? = UIApplication.shared.connectedScenes
+            .compactMap { $0 as? UIWindowScene }
+            .flatMap { $0.windows }
+            .first(where: { $0.isKeyWindow })?
+            .rootViewController
+
+        guard var top = rootVC else { return }
+        while let presented = top.presentedViewController { top = presented }
+        top.present(vc, animated: true)
     }
 }

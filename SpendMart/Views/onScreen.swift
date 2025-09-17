@@ -1,7 +1,10 @@
 import SwiftUI
 
+// MARK: - Onboarding
+
 struct SpendSmartOnboardingView: View {
     @State private var showingProfileSetup = false
+    @EnvironmentObject var session: AppSession
 
     var body: some View {
         VStack(spacing: 0) {
@@ -45,25 +48,42 @@ struct SpendSmartOnboardingView: View {
     }
 }
 
+// MARK: - Entry View (used by AppRootView when logged out)
+
 struct ContentView: View {
+    @EnvironmentObject var session: AppSession
     @Environment(\.scenePhase) private var scenePhase
     @State private var unlocked = false
 
     var body: some View {
         Group {
-            if unlocked {
-                SpendSmartOnboardingView()
-            } else {
+            // Only gate with biometrics if the user is ALREADY logged in
+            if session.isLoggedIn && requiresBiometricGate && !unlocked {
                 BiometricGateView {
                     unlocked = true
                 }
+            } else {
+                // Normal onboarding/login content (no biometrics while logged out)
+                SpendSmartOnboardingView()
             }
         }
-        .onChange(of: scenePhase) { _, newPhase in
+        .onChange(of: scenePhase) { phase in
             // Re-lock whenever app goes to background
-            if newPhase == .background { unlocked = false }
+            if phase == .background { unlocked = false }
+        }
+    }
+
+    private var requiresBiometricGate: Bool {
+        switch BiometricAuth.available() {
+        case .faceID, .touchID: return true
+        case .none:             return false
         }
     }
 }
 
-#Preview { ContentView() }
+// MARK: - Preview
+
+#Preview {
+    ContentView()
+        .environmentObject(AppSession())
+}
