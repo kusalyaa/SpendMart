@@ -1,11 +1,11 @@
 import SwiftUI
 import FirebaseAuth
 
-private enum ProfileRoute: Hashable {
-    case income
-}
+private enum ProfileRoute: Hashable { case income }
 
 struct ProfileSetupView: View {
+    @EnvironmentObject var session: AppSession   // ⬅️ add this
+
     // Default registration flow uses postLogin = false
     let postLogin: Bool
     init(postLogin: Bool = false) { self.postLogin = postLogin }
@@ -36,6 +36,10 @@ struct ProfileSetupView: View {
         "Sales Executive","Product Manager","Data Scientist","HR Manager",
         "Business Analyst","Architect","Pharmacist","Dentist","Chef","Writer"
     ]
+
+    private func log(_ msg: String, file: StaticString = #fileID, line: Int = #line) {
+        print("[Flow][Profile] \(msg)  (\(file):\(line))")
+    }
 
     var body: some View {
         NavigationStack(path: $path) {
@@ -93,8 +97,8 @@ struct ProfileSetupView: View {
                         fieldBlock(title: "Email") {
                             TextField("Email", text: $email)
                                 .keyboardType(.emailAddress)
-                                .textInputAutocapitalization(.none)   // ✅ don’t capitalize
-                                .autocorrectionDisabled(true)        // ✅ don’t autocorrect
+                                .textInputAutocapitalization(.none)
+                                .autocorrectionDisabled(true)
                                 .textFieldStyle(RoundedBorderTextFieldStyle())
                                 .frame(height: 44)
                                 .disabled(postLogin)
@@ -116,6 +120,7 @@ struct ProfileSetupView: View {
                     // Continue + Login
                     VStack(spacing: 16) {
                         Button {
+                            log("Continue tapped")
                             validateAndContinue()
                         } label: {
                             Text(isSaving ? "Creating…" : "Continue")
@@ -187,7 +192,13 @@ struct ProfileSetupView: View {
                 switch route {
                 case .income:
                     IncomeSetupView()
+                        .environmentObject(session)
+                        .onAppear { log("➡️ Arrived at IncomeSetupView") }
                 }
+            }
+            .onAppear {
+                session.suppressAuthRouting = true     // ⬅️ freeze root routing during onboarding
+                log("ProfileSetupView appeared | suppressAuthRouting=true")
             }
         }
         .animation(.easeInOut(duration: 0.25), value: showSuccessToast)
@@ -195,56 +206,45 @@ struct ProfileSetupView: View {
 
     // MARK: - Logic
     private func validateAndContinue() {
-        guard !postLogin else {
+        if postLogin {
             alertMessage = "You are already logged in."
             showAlert = true
+            log("Validation failed: postLogin==true")
             return
         }
-        if name.isEmpty { alertMessage = "Please enter your name"; showAlert = true; return }
-        if selectedOccupation.isEmpty { alertMessage = "Please select your occupation"; showAlert = true; return }
-        if !isValidEmail(email) { alertMessage = "Please enter a valid email address"; showAlert = true; return }
-        if password.count < 6 { alertMessage = "Password must be at least 6 characters"; showAlert = true; return }
+        guard !name.isEmpty else { alertMessage = "Please enter your name"; showAlert = true; log("Validation failed: name empty"); return }
+        guard !selectedOccupation.isEmpty else { alertMessage = "Please select your occupation"; showAlert = true; log("Validation failed: occupation empty"); return }
+        guard isValidEmail(email) else { alertMessage = "Please enter a valid email address"; showAlert = true; log("Validation failed: invalid email"); return }
+        guard password.count >= 6 else { alertMessage = "Password must be at least 6 characters"; showAlert = true; log("Validation failed: weak password"); return }
 
         isSaving = true
+        log("Starting account creation…")
 
         Task {
             do {
+                // 1) Create auth user
                 let result = try await Auth.auth().createUser(withEmail: email, password: password)
                 let uid = result.user.uid
-                await MainActor.run {
-                    isSaving = false
-                    successMessage = "Account created (Auth). Finishing setup…"
-                    showSuccessToast = true
-                    path.append(.income)
-                }
+                log("Auth user created uid=\(uid)")
 
-                Task.detached {
-                    do {
-                        try await UserService.shared.createOrMergeUser(
-                            uid: uid,
-                            email: email,
-                            name: name,
-                            occupation: selectedOccupation
-                        )
-                    } catch {
-                        print("Profile save failed: \(error)")
-                    }
-                }
-
-                // Save profile in Firestore (blocking, optional fallback)
+                // 2) Save profile in Firestore (do it ONCE)
                 try await UserService.shared.createOrMergeUser(
                     uid: uid,
                     email: email,
                     name: name,
                     occupation: selectedOccupation
                 )
+                log("Firestore profile saved for uid=\(uid)")
 
+                // 3) Navigate ONCE to Income
                 await MainActor.run {
                     isSaving = false
                     successMessage = "Account created successfully."
                     showSuccessToast = true
+                    log("Navigation → .income")
                     path.append(.income)
                 }
+
             } catch {
                 await MainActor.run {
                     isSaving = false
@@ -263,6 +263,7 @@ struct ProfileSetupView: View {
                         alertMessage = error.localizedDescription
                     }
                     showAlert = true
+                    log("Error during creation: \(alertMessage)")
                 }
             }
         }

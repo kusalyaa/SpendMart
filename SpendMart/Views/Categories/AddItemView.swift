@@ -5,11 +5,12 @@ import MapKit
 import CoreLocation
 
 struct AddItemView: View {
+    // Preselected category (from Category grid)
     var preselectedCategoryId: String? = nil
     var preselectedCategoryName: String? = nil
     var preselectedCategoryColorHex: String? = nil
 
-    // ✅ New preset values (from ScanView)
+    // ✅ Presets from Scan/OCR flow
     var presetTitle: String? = nil
     var presetDescription: String? = nil
     var presetAmount: String? = nil
@@ -47,7 +48,7 @@ struct AddItemView: View {
     @State private var latitude: Double?
     @State private var longitude: Double?
 
-    // Wallet shortfall
+    // Budget shortfall
     @State private var showShortfallSheet = false
     @State private var shortfallAmount: Double = 0
     @State private var shortfallInstallments: Int = 3
@@ -62,10 +63,18 @@ struct AddItemView: View {
         Double(amountText.replacingOccurrences(of: ",", with: "."))
     }
 
-    private func creditInterest(principal: Double, months: Int) -> Double { principal * creditMonthlyRate * Double(months) }
-    private func creditTotal(principal: Double, months: Int) -> Double { principal + creditInterest(principal: principal, months: months) }
-    private func perInstallment(total: Double, months: Int) -> Double { months > 0 ? total / Double(months) : 0 }
-    private var statusOptions: [String] { paymentMethod == "Credit" ? ["Pay", "To be paid"] : ["Paid", "Pay"] }
+    private func creditInterest(principal: Double, months: Int) -> Double {
+        principal * creditMonthlyRate * Double(months)
+    }
+    private func creditTotal(principal: Double, months: Int) -> Double {
+        principal + creditInterest(principal: principal, months: months)
+    }
+    private func perInstallment(total: Double, months: Int) -> Double {
+        months > 0 ? total / Double(months) : 0
+    }
+    private var statusOptions: [String] {
+        paymentMethod == "Credit" ? ["Pay", "To be paid"] : ["Paid", "Pay"]
+    }
 
     var body: some View {
         Form {
@@ -91,12 +100,17 @@ struct AddItemView: View {
             // Basic
             Section(header: Text("Basic Info")) {
                 HStack {
-                    Circle().fill(Color(hex: (selectedCategoryColorHex ?? preselectedCategoryColorHex ?? "#4F46E5"))).frame(width: 26, height: 26)
-                    TextField("Title (e.g., Mixer, Phone)", text: $title).textInputAutocapitalization(.words)
+                    Circle()
+                        .fill(Color(hex: (selectedCategoryColorHex ?? preselectedCategoryColorHex ?? "#4F46E5")))
+                        .frame(width: 26, height: 26)
+                    TextField("Title (e.g., Mixer, Phone)", text: $title)
+                        .textInputAutocapitalization(.words)
                 }
-                TextField("Description", text: $description).textInputAutocapitalization(.sentences)
+                TextField("Description", text: $description)
+                    .textInputAutocapitalization(.sentences)
                 HStack {
-                    Text("Amount (LKR)"); Spacer()
+                    Text("Amount (LKR)")
+                    Spacer()
                     TextField("0.00", text: $amountText)
                         .keyboardType(.decimalPad)
                         .multilineTextAlignment(.trailing)
@@ -112,7 +126,9 @@ struct AddItemView: View {
                     Text("Wallet").tag("Wallet")
                     Text("Credit").tag("Credit")
                 }
-                .onChange(of: paymentMethod) { new in status = (new == "Credit") ? "Pay" : "Paid" }
+                .onChange(of: paymentMethod) { new in
+                    status = (new == "Credit") ? "Pay" : "Paid"
+                }
 
                 Picker("Status", selection: $status) {
                     ForEach(statusOptions, id: \.self) { Text($0) }
@@ -120,7 +136,9 @@ struct AddItemView: View {
 
                 if paymentMethod == "Credit" && status == "Pay" {
                     Picker("Term (months)", selection: $installments) {
-                        Text("3").tag(3); Text("6").tag(6); Text("12").tag(12)
+                        Text("3").tag(3)
+                        Text("6").tag(6)
+                        Text("12").tag(12)
                     }
                     .pickerStyle(.segmented)
 
@@ -130,10 +148,12 @@ struct AddItemView: View {
                         VStack(alignment: .leading, spacing: 6) {
                             Text(String(format: "Interest: LKR %.2f", total - amt))
                             Text(String(format: "Total Payable: LKR %.2f", total)).bold()
-                            Text(String(format: "Per Installment: LKR %.2f", pai)).foregroundColor(.appSecondaryTxt)
+                            Text(String(format: "Per Installment: LKR %.2f", pai))
+                                .foregroundColor(.appSecondaryTxt)
                         }
                     } else {
-                        Text("Enter amount to see totals.").foregroundColor(.appSecondaryTxt)
+                        Text("Enter amount to see totals.")
+                            .foregroundColor(.appSecondaryTxt)
                     }
                 }
 
@@ -143,12 +163,18 @@ struct AddItemView: View {
             // Location
             Section(header: Text("Location")) {
                 if let lat = latitude, let lng = longitude {
-                    Text(locationName.isEmpty ? "Pinned location" : locationName).foregroundColor(.appSecondaryTxt)
-                    Text(String(format: "Lat: %.5f, Lng: %.5f", lat, lng)).font(.caption).foregroundColor(.appSecondaryTxt)
+                    Text(locationName.isEmpty ? "Pinned location" : locationName)
+                        .foregroundColor(.appSecondaryTxt)
+                    Text(String(format: "Lat: %.5f, Lng: %.5f", lat, lng))
+                        .font(.caption)
+                        .foregroundColor(.appSecondaryTxt)
                 } else {
-                    Text("No location selected").foregroundColor(.appSecondaryTxt)
+                    Text("No location selected")
+                        .foregroundColor(.appSecondaryTxt)
                 }
-                Button { showLocationPicker = true } label: {
+                Button {
+                    showLocationPicker = true
+                } label: {
                     Label(latitude == nil ? "Add Location" : "Change Location", systemImage: "mappin.and.ellipse")
                 }
                 .buttonStyle(.bordered)
@@ -162,20 +188,27 @@ struct AddItemView: View {
         .navigationTitle("Add Item")
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
-                Button(isSaving ? "Saving…" : "Save") { Task { await attemptSave() } }
-                    .disabled(isSaving || !isFormValid)
+                Button(isSaving ? "Saving…" : "Save") {
+                    Task { await attemptSave() }
+                }
+                .disabled(isSaving || !isFormValid)
             }
         }
         .sheet(isPresented: $showLocationPicker) {
             MapPickerView(initialName: locationName) { name, coord in
-                locationName = name; latitude = coord.latitude; longitude = coord.longitude
+                locationName = name
+                latitude = coord.latitude
+                longitude = coord.longitude
             }
             .presentationDetents([.large])
         }
         .sheet(isPresented: $showShortfallSheet) {
             VStack(spacing: 16) {
-                Capsule().fill(Color.secondary.opacity(0.3)).frame(width: 44, height: 5).padding(.top, 10)
-                Text("Insufficient Wallet Funds").font(.headline)
+                Capsule()
+                    .fill(Color.secondary.opacity(0.3))
+                    .frame(width: 44, height: 5)
+                    .padding(.top, 10)
+                Text("Insufficient Budget").font(.headline)
                 Text(String(format: "You’re short by LKR %.2f.", shortfallAmount))
                 Text("Move shortfall to Credit and pick a term:")
                 Picker("Installments", selection: $shortfallInstallments) {
@@ -188,33 +221,33 @@ struct AddItemView: View {
                     Button("Continue") {
                         Task {
                             showShortfallSheet = false
-                            await finalizeSave(catId: pendingCatId, catName: pendingCatName, handleWalletShortfall: true)
+                            await finalizeSave(
+                                catId: pendingCatId,
+                                catName: pendingCatName,
+                                handleBudgetShortfall: true
+                            )
                         }
                     }
                     .buttonStyle(.borderedProminent)
                 }
-                .padding(.horizontal).padding(.bottom, 12)
+                .padding(.horizontal)
+                .padding(.bottom, 12)
             }
-            .padding().presentationDetents([.height(260)]).presentationCornerRadius(20)
+            .padding()
+            .presentationDetents([.height(260)])
+            .presentationCornerRadius(20)
         }
-        .alert("Error", isPresented: .constant(errorText != nil), actions: { Button("OK") { errorText = nil } },
-               message: { Text(errorText ?? "") })
+        .alert("Error", isPresented: .constant(errorText != nil), actions: {
+            Button("OK") { errorText = nil }
+        }, message: { Text(errorText ?? "") })
         .onAppear {
             NotificationManager.shared.requestAuthIfNeeded()
 
             // ✅ Fill presets if provided
-            if let presetTitle = presetTitle, !presetTitle.isEmpty {
-                title = presetTitle
-            }
-            if let presetDescription = presetDescription, !presetDescription.isEmpty {
-                description = presetDescription
-            }
-            if let presetAmount = presetAmount, !presetAmount.isEmpty {
-                amountText = presetAmount
-            }
-            if let presetDate = presetDate {
-                date = presetDate
-            }
+            if let presetTitle = presetTitle, !presetTitle.isEmpty { title = presetTitle }
+            if let presetDescription = presetDescription, !presetDescription.isEmpty { description = presetDescription }
+            if let presetAmount = presetAmount, !presetAmount.isEmpty { amountText = presetAmount }
+            if let presetDate = presetDate { date = presetDate }
 
             if selectedCategoryId == nil {
                 if let pid = preselectedCategoryId {
@@ -230,7 +263,7 @@ struct AddItemView: View {
         }
     }
 
-    // MARK: Save flow
+    // MARK: - Save flow
 
     private var isFormValid: Bool {
         (selectedCategoryId != nil) &&
@@ -244,17 +277,21 @@ struct AddItemView: View {
         guard let catId = selectedCategoryId, let catName = selectedCategoryName else {
             errorText = "Please choose a category."; return
         }
-        pendingCatId = catId; pendingCatName = catName
+
+        pendingCatId = catId
+        pendingCatName = catName
 
         if justSaveNoEffects {
-            await finalizeSave(catId: catId, catName: catName, handleWalletShortfall: false); return
+            await finalizeSave(catId: catId, catName: catName, handleBudgetShortfall: false)
+            return
         }
 
+        // ✅ Budget-remaining validation (source of truth)
         if paymentMethod == "Wallet" && (status == "Paid" || status == "Pay") {
             do {
-                let wallet = try await fetchWalletBalance(uid: uid)
-                if amt > wallet {
-                    shortfallAmount = amt - wallet
+                let remaining = try await fetchBudgetRemaining(uid: uid)
+                if amt > remaining {
+                    shortfallAmount = amt - remaining
                     shortfallInstallments = 3
                     showShortfallSheet = true
                     return
@@ -265,10 +302,10 @@ struct AddItemView: View {
             }
         }
 
-        await finalizeSave(catId: catId, catName: catName, handleWalletShortfall: false)
+        await finalizeSave(catId: catId, catName: catName, handleBudgetShortfall: false)
     }
 
-    private func finalizeSave(catId: String, catName: String, handleWalletShortfall: Bool) async {
+    private func finalizeSave(catId: String, catName: String, handleBudgetShortfall: Bool) async {
         guard let uid = Auth.auth().currentUser?.uid else { errorText = "Not signed in."; return }
         guard let amt = amount else { errorText = "Enter a valid amount."; return }
 
@@ -287,24 +324,27 @@ struct AddItemView: View {
                 "categoryName": catName
             ]
             if let lat = latitude, let lng = longitude {
-                data["latitude"] = lat; data["longitude"] = lng; data["locationName"] = locationName
+                data["latitude"] = lat
+                data["longitude"] = lng
+                data["locationName"] = locationName
             }
 
             var itemIdWritten: String = ""
 
             switch paymentMethod {
             case "Wallet":
-                if handleWalletShortfall {
-                    let wallet = try await fetchWalletBalance(uid: uid)
-                    let walletPaid = wallet
-                    let creditPrincipal = max(amt - walletPaid, 0)
+                if handleBudgetShortfall {
+                    // Pay what we can from remaining budget; finance the rest
+                    let remaining = try await fetchBudgetRemaining(uid: uid)
+                    let budgetPaid = min(remaining, amt)
+                    let creditPrincipal = max(amt - budgetPaid, 0)
                     let ci = creditInterest(principal: creditPrincipal, months: shortfallInstallments)
                     let ctotal = creditPrincipal + ci
                     let cper = perInstallment(total: ctotal, months: shortfallInstallments)
 
                     data["paymentMethod"] = "Wallet+Credit"
                     data["status"] = "Pay"
-                    data["walletPaid"] = walletPaid
+                    data["walletPaid"] = budgetPaid
                     data["creditPrincipal"] = creditPrincipal
                     data["creditInstallments"] = shortfallInstallments
                     data["creditInterestRate"] = creditMonthlyRate
@@ -313,19 +353,31 @@ struct AddItemView: View {
                     data["creditPerInstallment"] = cper
 
                     itemIdWritten = try await writeItemAndEffects(uid: uid, catId: catId, itemData: data) {
-                        try await incrementWalletBalance(uid: uid, by: -walletPaid)
-                        try await incrementBudgetSpent(uid: uid, by: walletPaid)
-                        try await incrementCreditUsed(uid: uid, by: ctotal)
+                        if budgetPaid > 0 {
+                            try await incrementBudgetSpent(uid: uid, by: budgetPaid)
+                        }
+                        if ctotal > 0 {
+                            try await incrementCreditUsed(uid: uid, by: ctotal)
+                        }
                     }
 
-                    try await createDues(uid: uid, itemId: itemIdWritten, categoryId: catId,
-                                         itemTitle: title, totalMonths: shortfallInstallments,
-                                         perInstallment: cper, purchaseDate: date, firstPaidNow: false)
+                    try await createDues(
+                        uid: uid,
+                        itemId: itemIdWritten,
+                        categoryId: catId,
+                        itemTitle: title,
+                        totalMonths: shortfallInstallments,
+                        perInstallment: cper,
+                        purchaseDate: date,
+                        firstPaidNow: false
+                    )
 
                 } else {
-                    data["paymentMethod"] = "Wallet"; data["status"] = status
+                    // Normal wallet path: only budgetSpent is affected
+                    data["paymentMethod"] = "Wallet"
+                    data["status"] = status
+
                     itemIdWritten = try await writeItemAndEffects(uid: uid, catId: catId, itemData: data) {
-                        try await incrementWalletBalance(uid: uid, by: -amt)
                         if status == "Paid" || status == "Pay" {
                             try await incrementBudgetSpent(uid: uid, by: amt)
                         }
@@ -334,14 +386,17 @@ struct AddItemView: View {
 
             case "Credit":
                 if status == "Pay" {
+                    // First installment due now; try to cover from budget, finance the rest + remaining installments
                     let total = creditTotal(principal: amt, months: installments)
                     let first = perInstallment(total: total, months: installments)
-                    let wallet = try await fetchWalletBalance(uid: uid)
-                    let walletUsed = min(wallet, first)
-                    let creditImmediate = first - walletUsed
+
+                    let remaining = try await fetchBudgetRemaining(uid: uid)
+                    let budgetUsedNow = min(remaining, first)
+                    let creditImmediate = max(first - budgetUsedNow, 0)
                     let creditRemaining = total - first
 
-                    data["paymentMethod"] = "Credit"; data["status"] = "Pay"
+                    data["paymentMethod"] = "Credit"
+                    data["status"] = "Pay"
                     data["installments"] = installments
                     data["interestMonthlyRate"] = creditMonthlyRate
                     data["interestTotal"] = (total - amt)
@@ -349,23 +404,35 @@ struct AddItemView: View {
                     data["perInstallment"] = first
 
                     itemIdWritten = try await writeItemAndEffects(uid: uid, catId: catId, itemData: data) {
-                        if walletUsed > 0 {
-                            try await incrementWalletBalance(uid: uid, by: -walletUsed)
-                            try await incrementBudgetSpent(uid: uid, by: walletUsed)
+                        if budgetUsedNow > 0 {
+                            try await incrementBudgetSpent(uid: uid, by: budgetUsedNow)
                         }
-                        if creditImmediate > 0 { try await incrementCreditUsed(uid: uid, by: creditImmediate) }
-                        try await incrementCreditUsed(uid: uid, by: creditRemaining)
+                        if creditImmediate > 0 {
+                            try await incrementCreditUsed(uid: uid, by: creditImmediate)
+                        }
+                        if creditRemaining > 0 {
+                            try await incrementCreditUsed(uid: uid, by: creditRemaining)
+                        }
                     }
 
-                    try await createDues(uid: uid, itemId: itemIdWritten, categoryId: catId,
-                                         itemTitle: title, totalMonths: installments - 1,
-                                         perInstallment: first, purchaseDate: date, firstPaidNow: true)
+                    try await createDues(
+                        uid: uid,
+                        itemId: itemIdWritten,
+                        categoryId: catId,
+                        itemTitle: title,
+                        totalMonths: max(installments - 1, 0),
+                        perInstallment: first,
+                        purchaseDate: date,
+                        firstPaidNow: true
+                    )
 
                 } else {
+                    // To be paid later: entire total becomes credit.used, schedule all dues
                     let total = creditTotal(principal: amt, months: installments)
                     let per = perInstallment(total: total, months: installments)
 
-                    data["paymentMethod"] = "Credit"; data["status"] = "To be paid"
+                    data["paymentMethod"] = "Credit"
+                    data["status"] = "To be paid"
                     data["installments"] = installments
                     data["interestMonthlyRate"] = creditMonthlyRate
                     data["interestTotal"] = (total - amt)
@@ -376,13 +443,21 @@ struct AddItemView: View {
                         try await incrementCreditUsed(uid: uid, by: total)
                     }
 
-                    try await createDues(uid: uid, itemId: itemIdWritten, categoryId: catId,
-                                         itemTitle: title, totalMonths: installments,
-                                         perInstallment: per, purchaseDate: date, firstPaidNow: false)
+                    try await createDues(
+                        uid: uid,
+                        itemId: itemIdWritten,
+                        categoryId: catId,
+                        itemTitle: title,
+                        totalMonths: installments,
+                        perInstallment: per,
+                        purchaseDate: date,
+                        firstPaidNow: false
+                    )
                 }
 
             default:
-                data["paymentMethod"] = paymentMethod; data["status"] = status
+                data["paymentMethod"] = paymentMethod
+                data["status"] = status
                 _ = try await writeItemAndEffects(uid: uid, catId: catId, itemData: data) { }
             }
 
@@ -394,9 +469,14 @@ struct AddItemView: View {
         isSaving = false
     }
 
-    // MARK: Firestore helpers
+    // MARK: - Firestore helpers
 
-    private func writeItemAndEffects(uid: String, catId: String, itemData: [String: Any], effects: @escaping () async throws -> Void) async throws -> String {
+    private func writeItemAndEffects(
+        uid: String,
+        catId: String,
+        itemData: [String: Any],
+        effects: @escaping () async throws -> Void
+    ) async throws -> String {
         let itemRef = db.collection("users").document(uid)
             .collection("categories").document(catId)
             .collection("items").document()
@@ -406,33 +486,45 @@ struct AddItemView: View {
     }
 
     private func incrementBudgetSpent(uid: String, by amount: Double) async throws {
-        try await db.collection("users").document(uid).updateData(["financials.budgetSpent": FieldValue.increment(amount)])
-    }
-    private func incrementCreditUsed(uid: String, by amount: Double) async throws {
-        try await db.collection("users").document(uid).updateData(["credit.used": FieldValue.increment(amount)])
-    }
-    private func incrementWalletBalance(uid: String, by amount: Double) async throws {
-        try await db.collection("users").document(uid).updateData(["wallet.balance": FieldValue.increment(amount)])
+        try await db.collection("users").document(uid)
+            .updateData(["financials.budgetSpent": FieldValue.increment(amount)])
     }
 
-    private func fetchWalletBalance(uid: String) async throws -> Double {
+    private func incrementCreditUsed(uid: String, by amount: Double) async throws {
+        try await db.collection("users").document(uid)
+            .updateData(["credit.used": FieldValue.increment(amount)])
+    }
+
+    // ✅ Source of truth for validation: monthlyBudget - budgetSpent
+    private func fetchBudgetRemaining(uid: String) async throws -> Double {
         let snap = try await db.collection("users").document(uid).getDocument()
-        let wallet = (snap.data()?["wallet"] as? [String: Any]) ?? [:]
-        return wallet["balance"] as? Double ?? 0
+        let f = (snap.data()?["financials"] as? [String: Any]) ?? [:]
+        let remaining = (f["monthlyBudget"] as? Double ?? 0) - (f["budgetSpent"] as? Double ?? 0)
+        return max(remaining, 0)
     }
 
     private func recomputeNetAfterExpenses(uid: String) async throws {
         let ref = db.collection("users").document(uid)
         let snap = try await ref.getDocument()
         let f = snap.data()?["financials"] as? [String: Any] ?? [:]
-        let income  = f["monthlyIncome"]   as? Double ?? 0
+        let income   = f["monthlyIncome"]   as? Double ?? 0
         let expenses = f["monthlyExpenses"] as? Double ?? 0
         let spent    = f["budgetSpent"]     as? Double ?? 0
-        try await ref.updateData(["financials.netAfterExpenses": (income - expenses) - spent])
+        try await ref.updateData([
+            "financials.netAfterExpenses": (income - expenses) - spent
+        ])
     }
 
-    private func createDues(uid: String, itemId: String, categoryId: String, itemTitle: String,
-                            totalMonths: Int, perInstallment: Double, purchaseDate: Date, firstPaidNow: Bool) async throws {
+    private func createDues(
+        uid: String,
+        itemId: String,
+        categoryId: String,
+        itemTitle: String,
+        totalMonths: Int,
+        perInstallment: Double,
+        purchaseDate: Date,
+        firstPaidNow: Bool
+    ) async throws {
         guard totalMonths > 0 else { return }
         let duesRef = db.collection("users").document(uid).collection("dues")
         let cal = Calendar.current
@@ -452,6 +544,8 @@ struct AddItemView: View {
                 "status": "pending",
                 "createdAt": FieldValue.serverTimestamp()
             ])
+
+            // Local notification at 9 AM on due day (or a few seconds later if due is in the past)
             var at = cal.date(bySettingHour: 9, minute: 0, second: 0, of: dueDate) ?? dueDate
             if at < Date() { at = Date().addingTimeInterval(5) }
             NotificationManager.shared.schedule(

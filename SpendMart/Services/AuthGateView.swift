@@ -22,37 +22,37 @@ struct AuthGateView: View {
                 .onAppear { Task { await refreshAndRoute() } }
 
             case .login:
-                LoginView() // your existing login screen
-                    .onAppear { /* optional: cleanup UI state */ }
+                LoginView()
+                    .onAppear {  }
 
             case .verify(let email):
                 ConfirmEmailView(
                     userEmail: email,
                     onVerified: {
-                        Task { await refreshAndRoute() }   // re-check, then go dashboard
+                        Task { await refreshAndRoute() }
                     },
                     onChangeEmail: {
-                        Task { await signOutAndGoLogin() } // allow changing email
+                        Task { await signOutAndGoLogin() }
                     }
                 )
 
             case .dashboard:
-                DashboardView() // <-- your real home screen
+                DashboardView()
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)) { _ in
-            // If the app returns from Mail/Safari, re-check verification automatically
+            
             Task { await refreshAndRoute() }
         }
     }
 
-    // Re-evaluate auth + verification and set the route
+    
     private func refreshAndRoute() async {
         if let user = Auth.auth().currentUser {
             do {
-                try await user.reload() // get fresh isEmailVerified
+                try await user.reload() 
             } catch {
-                // if reload fails transiently, keep previous route
+                
             }
             if Auth.auth().currentUser?.isEmailVerified == true {
                 await MainActor.run { route = .dashboard }
@@ -65,7 +65,7 @@ struct AuthGateView: View {
     }
 
     private func signOutAndGoLogin() async {
-        do { try Auth.auth().signOut() } catch { /* ignore */ }
+        do { try Auth.auth().signOut() } catch { }
         await MainActor.run { route = .login }
     }
 }

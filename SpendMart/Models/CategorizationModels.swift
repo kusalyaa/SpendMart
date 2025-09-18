@@ -10,7 +10,7 @@ struct Category: Identifiable, Codable {
 struct Item: Identifiable, Codable {
     var id: String?
 
-    // basics
+    
     var title: String
     var description: String?
     var amount: Double
@@ -18,11 +18,11 @@ struct Item: Identifiable, Codable {
     var date: Date
     var createdAt: Date?
 
-    // categorization
+    
     var categoryId: String?
     var categoryName: String?
 
-    // payment / status
+    
     var paymentMethod: String?      // "Wallet" | "Credit" | "Wallet+Credit"
     var status: String?             // Wallet: "Paid"|"Pay"; Credit: "Pay"|"To be paid"
     var installments: Int?          // 3 | 6 | 12
@@ -31,7 +31,7 @@ struct Item: Identifiable, Codable {
     var totalPayable: Double?
     var perInstallment: Double?
 
-    // split when wallet insufficient
+    
     var walletPaid: Double?
     var creditPrincipal: Double?
     var creditInstallments: Int?
@@ -40,14 +40,14 @@ struct Item: Identifiable, Codable {
     var creditTotalPayable: Double?
     var creditPerInstallment: Double?
 
-    // location
+    
     var locationName: String?
     var latitude: Double?
     var longitude: Double?
 
-    // warranty
+    
     var warrantyExp: Date?
 
-    // media
+    
     var imageURL: String?
 }

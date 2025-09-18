@@ -4,64 +4,59 @@ struct AppRootView: View {
     @EnvironmentObject var session: AppSession
     @Environment(\.scenePhase) private var scenePhase
 
-    // Persisted flag for this run
     @AppStorage("appLockUnlocked") private var unlocked: Bool = false
     @State private var didCheckColdLaunch = false
 
+    private var requiresBiometricGate: Bool {
+        // your original gate condition; keeping it simple here
+        return true
+    }
+
+    private func log(_ msg: String, file: StaticString = #fileID, line: Int = #line) {
+        print("[Flow][AppRootView] \(msg)  (\(file):\(line))")
+    }
+
     var body: some View {
         Group {
-            if session.isLoggedIn {
-                if requiresBiometricGate && !unlocked {
-                    BiometricGateView {
-                        unlocked = true
-                    }
-                } else {
-                    RootTabView()
-                        .onChange(of: session.isLoggedIn) { loggedIn in
-                            // Correct syntax: single parameter
-                            if loggedIn {
-                                // If user logged in right now, skip Face ID this run
-                                unlocked = true
-                            } else {
-                                unlocked = false
-                            }
-                        }
-                }
-            } else {
+            // 🚧 1) Freeze routing while onboarding is running
+            if session.suppressAuthRouting {
                 ContentView()
-                    .onAppear {
-                        // Ensure gate resets in login/onboarding
-                        unlocked = false
-                    }
+                    .onAppear { log("Presenting ContentView (login/onboarding) | suppressAuthRouting=true") }
+
+            } else if requiresBiometricGate && !unlocked && session.isLoggedIn {
+                BiometricGateView {
+                    log("BiometricGateView success → unlocked=true")
+                    unlocked = true
+                }
+                .onAppear {
+                    log("Presenting BiometricGateView (pre-content) | isLoggedIn=\(session.isLoggedIn) | unlocked=\(unlocked)")
+                }
+
+            } else if !session.isLoggedIn {
+                ContentView()
+                    .onAppear { log("Presenting ContentView (login/onboarding) | unlocked=\(unlocked) | suppressAuthRouting=false") }
+
+            } else {
+                RootTabView()
+                    .onAppear { log("Presenting RootTabView | unlocked=\(unlocked)") }
             }
         }
         .onAppear {
-            // Cold launch: require Face ID if already logged in
-            if !didCheckColdLaunch {
+            log("onAppear | didCheckColdLaunch=\(didCheckColdLaunch) | isLoggedIn=\(session.isLoggedIn) | requiresBiometricGate=\(requiresBiometricGate) | unlocked=\(unlocked)")
+            if !didCheckColdLaunch && requiresBiometricGate {
                 didCheckColdLaunch = true
-                if session.isLoggedIn && requiresBiometricGate {
-                    unlocked = false
-                }
+                // optional: relock on cold start
+                unlocked = false
+                log("Cold launch → relock (unlocked=false)")
             }
         }
         .onChange(of: scenePhase) { phase in
-            guard !session.suppressAuthRouting else { return }
+            log("scenePhase changed → \(phase) | suppressAuthRouting=\(session.suppressAuthRouting)")
+            guard !session.suppressAuthRouting else { return } // ← don’t thrash routing mid-onboarding
             if phase == .active {
-                // Only refresh, do not re-lock
+                log(".active → session.refreshUser() (no unlock changes here)")
                 session.refreshUser()
-            } else if phase == .background {
-                // Re-lock when app goes to background
-                if session.isLoggedIn && requiresBiometricGate {
-                    unlocked = false
-                }
             }
-        }
-    }
-
-    private var requiresBiometricGate: Bool {
-        switch BiometricAuth.available() {
-        case .faceID, .touchID: return true
-        case .none:             return false
         }
     }
 }

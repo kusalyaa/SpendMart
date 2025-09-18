@@ -5,10 +5,10 @@ struct Due: Identifiable {
     var itemId: String
     var categoryId: String
     var itemTitle: String
-    var installmentIndex: Int        // 1..N
-    var installments: Int           // total N
+    var installmentIndex: Int
+    var installments: Int
     var amount: Double
     var dueDate: Date
-    var status: String              // "pending" | "paid"
+    var status: String              
     var createdAt: Date?
 }

@@ -1,7 +1,6 @@
 import SwiftUI
 import FirebaseAuth
 
-// ✅ Move the timeout error OUTSIDE any closure/generic context
 private enum TimeoutError: Error { case timedOut }
 
 enum BudgetMode: String, CaseIterable, Identifiable {
@@ -11,6 +10,9 @@ enum BudgetMode: String, CaseIterable, Identifiable {
 }
 
 struct IncomeSetupView: View {
+    @EnvironmentObject var session: AppSession            // ⬅️ add this
+    @Environment(\.dismiss) private var dismiss           // ⬅️ to close local stack after save
+
     // MARK: - UI State
     @State private var monthlyIncomeText: String = ""
     @State private var monthlyExpensesText: String = ""
@@ -20,9 +22,7 @@ struct IncomeSetupView: View {
     @State private var isSaving = false
     @State private var showAlert = false
     @State private var alertMessage = ""
-    @State private var goToNext = false   // -> LoginView()
 
-    // MARK: - Derived
     private var income: Double {
         Double(monthlyIncomeText.replacingOccurrences(of: ",", with: "")) ?? 0
     }
@@ -32,21 +32,16 @@ struct IncomeSetupView: View {
     private var netAfterExpenses: Double { max(income - expenses, 0) }
     private var budget: Double {
         switch budgetMode {
-        case .custom:
-            return Double(customBudgetText.replacingOccurrences(of: ",", with: "")) ?? 0
-        case .percentage:
-            return (netAfterExpenses * (percentage / 100.0))
+        case .custom: return Double(customBudgetText.replacingOccurrences(of: ",", with: "")) ?? 0
+        case .percentage: return (netAfterExpenses * (percentage / 100.0))
         }
     }
     private var budgetValid: Bool { budget <= netAfterExpenses }
-    private var canSave: Bool {
-        income > 0 && expenses >= 0 && budget >= 0 && budgetValid
-    }
+    private var canSave: Bool { income > 0 && expenses >= 0 && budget >= 0 && budgetValid }
 
     var body: some View {
         NavigationView {
             VStack(spacing: 0) {
-                // Header (tight)
                 VStack(spacing: 12) {
                     Text("Income & Budget")
                         .font(.system(size: 26, weight: .semibold))
@@ -64,36 +59,29 @@ struct IncomeSetupView: View {
                 }
                 .padding(.bottom, 12)
 
-                // Content
                 ScrollView {
                     VStack(spacing: 14) {
-
                         Card {
                             VStack(alignment: .leading, spacing: 10) {
-                                Text("Monthly Income")
-                                    .font(.headline)
+                                Text("Monthly Income").font(.headline)
                                 currencyField("Enter income", text: $monthlyIncomeText)
                                 Text("This is your total expected income for the month.")
-                                    .font(.footnote)
-                                    .foregroundColor(.secondary)
+                                    .font(.footnote).foregroundColor(.secondary)
                             }
                         }
 
                         Card {
                             VStack(alignment: .leading, spacing: 10) {
-                                Text("Monthly Expenses")
-                                    .font(.headline)
+                                Text("Monthly Expenses").font(.headline)
                                 currencyField("Enter total expenses", text: $monthlyExpensesText)
                                 Text("All fixed/recurring bills and typical monthly costs.")
-                                    .font(.footnote)
-                                    .foregroundColor(.secondary)
+                                    .font(.footnote).foregroundColor(.secondary)
                             }
                         }
 
                         Card {
                             VStack(alignment: .leading, spacing: 12) {
-                                Text("Monthly Budget")
-                                    .font(.headline)
+                                Text("Monthly Budget").font(.headline)
 
                                 Picker("", selection: $budgetMode) {
                                     ForEach(BudgetMode.allCases) { mode in
@@ -106,16 +94,13 @@ struct IncomeSetupView: View {
                                     VStack(alignment: .leading, spacing: 8) {
                                         HStack {
                                             Text("Use")
-                                            Text("\(Int(percentage))%")
-                                                .fontWeight(.semibold)
+                                            Text("\(Int(percentage))%").fontWeight(.semibold)
                                             Text("of Income − Expenses")
                                         }
                                         Slider(value: $percentage, in: 0...100, step: 1)
                                         HStack {
-                                            Text("Net After Expenses")
-                                            Spacer()
-                                            Text(formatCurrency(netAfterExpenses))
-                                                .fontWeight(.semibold)
+                                            Text("Net After Expenses"); Spacer()
+                                            Text(formatCurrency(netAfterExpenses)).fontWeight(.semibold)
                                         }
                                     }
                                 } else {
@@ -132,8 +117,7 @@ struct IncomeSetupView: View {
 
                                     if !budgetValid {
                                         Text("Budget cannot exceed Net After Expenses.")
-                                            .font(.footnote)
-                                            .foregroundColor(.red)
+                                            .font(.footnote).foregroundColor(.red)
                                             .padding(.top, 4)
                                     }
                                 }
@@ -141,7 +125,7 @@ struct IncomeSetupView: View {
                         }
 
                         Button {
-                            saveAndGo()
+                            saveAndExit()
                         } label: {
                             HStack(spacing: 8) {
                                 if isSaving { ProgressView().controlSize(.regular) }
@@ -163,39 +147,27 @@ struct IncomeSetupView: View {
             }
             .navigationBarTitleDisplayMode(.inline)
             .background(Color(UIColor.systemGroupedBackground).ignoresSafeArea())
-            .alert("Notice", isPresented: $showAlert, actions: {
+            .alert("Notice", isPresented: $showAlert) {
                 Button("OK", role: .cancel) { }
-            }, message: { Text(alertMessage) })
-            .fullScreenCover(isPresented: $goToNext) {
-                // Go where you want after setup:
-                LoginView()    // or RootTabView()
-            }
+            } message: { Text(alertMessage) }
         }
+        .onAppear { print("[Flow][Income] Arrived at IncomeSetupView") }
     }
 
-    // MARK: - Save that never blocks UI
-    private func saveAndGo() {
+    // MARK: - Save + leave onboarding
+    private func saveAndExit() {
         guard let uid = Auth.auth().currentUser?.uid else {
-            alertMessage = "You’re not signed in."
-            showAlert = true
-            return
+            alertMessage = "You’re not signed in."; showAlert = true; return
         }
         guard canSave else {
-            alertMessage = "Please check your inputs."
-            showAlert = true
-            return
+            alertMessage = "Please check your inputs."; showAlert = true; return
         }
 
         isSaving = true
 
-        // 1) Navigate immediately for snappy UX
-        goToNext = true
+        let incomeVal = income, expensesVal = expenses, budgetVal = budget
 
-        // 2) Firestore save in the background with an 8s timeout guard
-        let incomeVal = income
-        let expensesVal = expenses
-        let budgetVal = budget
-
+        // Save in the background; don’t block navigation
         Task.detached {
             do {
                 try await withTimeout(seconds: 8) {
@@ -207,24 +179,21 @@ struct IncomeSetupView: View {
                     )
                 }
             } catch {
-                // Log; don't block user flow.
-                print("Background save failed or timed out: \(error)")
+                print("[Flow][Income] Background save failed/timed out: \(error)")
             }
         }
 
-        // 3) Stop the spinner quickly (we’re already navigating)
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-            isSaving = false
-        }
+        // Release the root router and close onboarding
+        session.suppressAuthRouting = false        // ⬅️ let AppRootView switch to Home
+        dismiss()                                   // ⬅️ close this stack
     }
 
-    // MARK: - Timeout helper
     private func withTimeout<T>(seconds: Double, operation: @escaping () async throws -> T) async throws -> T {
         try await withThrowingTaskGroup(of: T.self) { group in
             group.addTask { try await operation() }
             group.addTask {
                 try await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
-                throw TimeoutError.timedOut       // ✅ use the file‑scope enum
+                throw TimeoutError.timedOut
             }
             let result = try await group.next()!
             group.cancelAll()
@@ -232,43 +201,31 @@ struct IncomeSetupView: View {
         }
     }
 
-    // MARK: - UI helpers
-    @ViewBuilder
-    private func currencyField(_ placeholder: String, text: Binding<String>) -> some View {
+    @ViewBuilder private func currencyField(_ placeholder: String, text: Binding<String>) -> some View {
         TextField(placeholder, text: text)
             .keyboardType(.decimalPad)
             .textFieldStyle(.roundedBorder)
             .padding(.top, 2)
     }
 
-    @ViewBuilder
-    private func summaryRow(label: String, value: Double) -> some View {
-        HStack {
-            Text(label)
-            Spacer()
-            Text(formatCurrency(value))
-                .fontWeight(.semibold)
-        }
+    @ViewBuilder private func summaryRow(label: String, value: Double) -> some View {
+        HStack { Text(label); Spacer(); Text(formatCurrency(value)).fontWeight(.semibold) }
     }
 
     private func formatCurrency(_ value: Double) -> String {
-        let f = NumberFormatter()
-        f.numberStyle = .currency
-        // f.currencyCode = "LKR" // uncomment to force LKR
+        let f = NumberFormatter(); f.numberStyle = .currency
         return f.string(from: NSNumber(value: value)) ?? String(format: "%.2f", value)
     }
 }
 
-// Theme‑matching card
+// Theme-matching card
 fileprivate struct Card<Content: View>: View {
     @ViewBuilder var content: () -> Content
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            content()
-        }
-        .padding(14)
-        .background(Color(.secondarySystemBackground))
-        .cornerRadius(16)
-        .shadow(color: Color.black.opacity(0.05), radius: 7, x: 0, y: 2)
+        VStack(alignment: .leading, spacing: 10) { content() }
+            .padding(14)
+            .background(Color(.secondarySystemBackground))
+            .cornerRadius(16)
+            .shadow(color: Color.black.opacity(0.05), radius: 7, x: 0, y: 2)
     }
 }

@@ -1,12 +1,11 @@
 import SwiftUI
 import FirebaseAuth
+import Combine
 
 @MainActor
 final class AppSession: ObservableObject {
     @Published var isLoggedIn: Bool = (Auth.auth().currentUser != nil)
     @Published var isEmailVerified: Bool = (Auth.auth().currentUser?.isEmailVerified ?? false)
-
-    /// When true, routers must not flip the UI (used while system pickers are presented).
     @Published var suppressAuthRouting: Bool = false
 
     private var handle: AuthStateDidChangeListenerHandle?
