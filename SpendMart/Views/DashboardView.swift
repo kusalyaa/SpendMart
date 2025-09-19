@@ -1,11 +1,11 @@
-// DashboardView.swift
+
 import SwiftUI
 
 struct DashboardView: View {
     var body: some View {
         NavigationView {
             VStack(spacing: 20) {
-                // Header with profile
+               
                 HStack {
                     VStack(alignment: .leading) {
                         Text("Hi John!")
@@ -28,7 +28,7 @@ struct DashboardView: View {
                 }
                 .padding(.horizontal)
                 
-                // Balance Card
+                
                 VStack(spacing: 16) {
                     Text("Total Balance")
                         .font(.subheadline)
@@ -66,7 +66,7 @@ struct DashboardView: View {
                 .cornerRadius(16)
                 .padding(.horizontal)
                 
-                // Quick Actions
+                
                 VStack(alignment: .leading, spacing: 16) {
                     HStack {
                         Text("Quick Actions")

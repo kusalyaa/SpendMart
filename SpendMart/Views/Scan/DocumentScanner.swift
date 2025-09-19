@@ -4,7 +4,7 @@ struct DocumentScanner: View {
     var onComplete: (_ images: [UIImage]) -> Void
     var onCancel: () -> Void
     var onError: (_ error: Error) -> Void
-    var body: some View { EmptyView() } // no camera in Simulator
+    var body: some View { EmptyView() } 
 }
 #else
 import SwiftUI

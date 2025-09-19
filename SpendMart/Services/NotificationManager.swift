@@ -12,9 +12,9 @@ final class NotificationManager {
         }
     }
 
-    /// Schedules a one-time local notification at the exact date/time.
+    
     func schedule(id: String, title: String, body: String, on date: Date) {
-        // Don't schedule in the past
+        
         if date <= Date() { return }
 
         let content = UNMutableNotificationContent()

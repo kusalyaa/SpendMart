@@ -4,26 +4,27 @@ import FirebaseAuth
 private enum ProfileRoute: Hashable { case income }
 
 struct ProfileSetupView: View {
-    @EnvironmentObject var session: AppSession   // ⬅️ add this
+    @EnvironmentObject var session: AppSession
+    @AppStorage("onboardingComplete") private var onboardingComplete: Bool = false
 
-    // Default registration flow uses postLogin = false
+    
     let postLogin: Bool
     init(postLogin: Bool = false) { self.postLogin = postLogin }
 
-    // Navigation
+    
     @State private var path: [ProfileRoute] = []
 
-    // Form
+    
     @State private var name = ""
     @State private var selectedOccupation = ""
     @State private var email = ""
     @State private var password = ""
     @State private var showOccupationPicker = false
 
-    // Other navigation
+   
     @State private var showingLogin = false
 
-    // Feedback
+    
     @State private var isSaving = false
     @State private var showAlert = false
     @State private var alertMessage = ""
@@ -44,7 +45,7 @@ struct ProfileSetupView: View {
     var body: some View {
         NavigationStack(path: $path) {
             ZStack {
-                Color.white.ignoresSafeArea()
+                Color(.systemBackground).ignoresSafeArea()
 
                 VStack(spacing: 0) {
                     // Header
@@ -65,16 +66,16 @@ struct ProfileSetupView: View {
                     }
                     .padding(.bottom, 32)
 
-                    // Form
+                    
                     VStack(spacing: 20) {
-                        fieldBlock(title: "Name") {
+                        FieldBlock(title: "Name") {
                             TextField("Name", text: $name)
                                 .textInputAutocapitalization(.words)
-                                .textFieldStyle(RoundedBorderTextFieldStyle())
+                                .textFieldStyle(.roundedBorder)
                                 .frame(height: 44)
                         }
 
-                        fieldBlock(title: "Occupation") {
+                        FieldBlock(title: "Occupation") {
                             Button { showOccupationPicker = true } label: {
                                 HStack {
                                     Text(selectedOccupation.isEmpty ? "Occupation" : selectedOccupation)
@@ -94,20 +95,20 @@ struct ProfileSetupView: View {
                             }
                         }
 
-                        fieldBlock(title: "Email") {
+                        FieldBlock(title: "Email") {
                             TextField("Email", text: $email)
                                 .keyboardType(.emailAddress)
                                 .textInputAutocapitalization(.none)
                                 .autocorrectionDisabled(true)
-                                .textFieldStyle(RoundedBorderTextFieldStyle())
+                                .textFieldStyle(.roundedBorder)
                                 .frame(height: 44)
                                 .disabled(postLogin)
                                 .opacity(postLogin ? 0.6 : 1)
                         }
 
-                        fieldBlock(title: "Password") {
+                        FieldBlock(title: "Password") {
                             SecureField("Password", text: $password)
-                                .textFieldStyle(RoundedBorderTextFieldStyle())
+                                .textFieldStyle(.roundedBorder)
                                 .frame(height: 44)
                                 .disabled(postLogin)
                                 .opacity(postLogin ? 0.6 : 1)
@@ -117,7 +118,7 @@ struct ProfileSetupView: View {
 
                     Spacer()
 
-                    // Continue + Login
+                  
                     VStack(spacing: 16) {
                         Button {
                             log("Continue tapped")
@@ -172,22 +173,20 @@ struct ProfileSetupView: View {
                         .shadow(radius: 6)
                 }
             }
-            // Occupation picker
-            .actionSheet(isPresented: $showOccupationPicker) {
-                ActionSheet(
-                    title: Text("Select Occupation"),
-                    buttons: occupations.map { occ in
-                        ActionSheet.Button.default(Text(occ)) { selectedOccupation = occ }
-                    } + [ActionSheet.Button.cancel()]
-                )
+           
+            .confirmationDialog("Select Occupation", isPresented: $showOccupationPicker, titleVisibility: .visible) {
+                ForEach(occupations, id: \.self) { occ in
+                    Button(occ) { selectedOccupation = occ }
+                }
+                Button("Cancel", role: .cancel) { }
             }
-            // Alerts
+            
             .alert("Validation Error", isPresented: $showAlert) {
                 Button("OK", role: .cancel) { }
             } message: { Text(alertMessage) }
-            // Login
+            
             .fullScreenCover(isPresented: $showingLogin) { LoginView() }
-            // Destination
+         
             .navigationDestination(for: ProfileRoute.self) { route in
                 switch route {
                 case .income:
@@ -197,14 +196,15 @@ struct ProfileSetupView: View {
                 }
             }
             .onAppear {
-                session.suppressAuthRouting = true     // ⬅️ freeze root routing during onboarding
-                log("ProfileSetupView appeared | suppressAuthRouting=true")
+               
+                onboardingComplete = false
+                session.suppressAuthRouting = true
+                log("ProfileSetupView appeared | postLogin=\(postLogin) | suppressAuthRouting=true | onboardingComplete=false")
             }
         }
         .animation(.easeInOut(duration: 0.25), value: showSuccessToast)
     }
 
-    // MARK: - Logic
     private func validateAndContinue() {
         if postLogin {
             alertMessage = "You are already logged in."
@@ -222,12 +222,12 @@ struct ProfileSetupView: View {
 
         Task {
             do {
-                // 1) Create auth user
+               
                 let result = try await Auth.auth().createUser(withEmail: email, password: password)
                 let uid = result.user.uid
                 log("Auth user created uid=\(uid)")
 
-                // 2) Save profile in Firestore (do it ONCE)
+                
                 try await UserService.shared.createOrMergeUser(
                     uid: uid,
                     email: email,
@@ -236,7 +236,7 @@ struct ProfileSetupView: View {
                 )
                 log("Firestore profile saved for uid=\(uid)")
 
-                // 3) Navigate ONCE to Income
+               
                 await MainActor.run {
                     isSaving = false
                     successMessage = "Account created successfully."
@@ -273,15 +273,23 @@ struct ProfileSetupView: View {
         let emailRegex = "[A-Z0-9a-z._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,64}"
         return NSPredicate(format: "SELF MATCHES %@", emailRegex).evaluate(with: email)
     }
-}
 
-// MARK: - Small UI helper
-@ViewBuilder
-private func fieldBlock<T: View>(title: String, @ViewBuilder content: () -> T) -> some View {
-    VStack(alignment: .leading, spacing: 8) {
-        Text(title)
-            .font(.system(size: 14))
-            .foregroundColor(.gray)
-        content()
+    private struct FieldBlock<Content: View>: View {
+        let title: String
+        @ViewBuilder let content: Content
+
+        init(title: String, @ViewBuilder content: () -> Content) {
+            self.title = title
+            self.content = content()
+        }
+
+        var body: some View {
+            VStack(alignment: .leading, spacing: 8) {
+                Text(title)
+                    .font(.system(size: 14))
+                    .foregroundColor(.gray)
+                content
+            }
+        }
     }
 }

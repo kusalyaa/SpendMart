@@ -1,7 +1,6 @@
 import SwiftUI
 import MapKit
 
-// MARK: - Tap-to-drop MKMapView (all gestures enabled)
 struct SelectableMapView: UIViewRepresentable {
     @Binding var selectedCoordinate: CLLocationCoordinate2D?
 
@@ -23,20 +22,19 @@ struct SelectableMapView: UIViewRepresentable {
         map.setRegion(MKCoordinateRegion(center: center, span: span), animated: false)
 
         let tap = UITapGestureRecognizer(target: context.coordinator, action: #selector(Coordinator.handleTap(_:)))
-        tap.cancelsTouchesInView = false // keep gestures working
+        tap.cancelsTouchesInView = false
         map.addGestureRecognizer(tap)
 
         return map
     }
 
     func updateUIView(_ map: MKMapView, context: Context) {
-        // Keep region reasonable; don’t fight user’s current zoom/pan
-        // Only update annotation if binding changed externally
+        
         context.coordinator.markerTint = markerTint
 
         let current = map.annotations.compactMap { $0 as? MKPointAnnotation }.first?.coordinate
         if current?.latitude != selectedCoordinate?.latitude || current?.longitude != selectedCoordinate?.longitude {
-            // refresh annotations
+           
             map.removeAnnotations(map.annotations.filter { !($0 is MKUserLocation) })
             if let coord = selectedCoordinate {
                 let ann = MKPointAnnotation()
@@ -64,17 +62,17 @@ struct SelectableMapView: UIViewRepresentable {
             let point = gesture.location(in: mapView)
             let coord = mapView.convert(point, toCoordinateFrom: mapView)
 
-            // Update binding
+            
             parent.selectedCoordinate = coord
 
-            // Drop/replace marker
+            
             mapView.removeAnnotations(mapView.annotations.filter { !($0 is MKUserLocation) })
             let ann = MKPointAnnotation()
             ann.coordinate = coord
             mapView.addAnnotation(ann)
         }
 
-        // Marker style
+        
         func mapView(_ mapView: MKMapView, viewFor annotation: MKAnnotation) -> MKAnnotationView? {
             if annotation is MKUserLocation { return nil }
             let id = "marker"
@@ -89,7 +87,6 @@ struct SelectableMapView: UIViewRepresentable {
     }
 }
 
-// MARK: - Read-only MKMapView with a single pin (all gestures enabled)
 struct ReadOnlyMapView: UIViewRepresentable {
     var coordinate: CLLocationCoordinate2D
     var span: MKCoordinateSpan = MKCoordinateSpan(latitudeDelta: 0.01, longitudeDelta: 0.01)

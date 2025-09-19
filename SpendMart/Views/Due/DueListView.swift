@@ -10,7 +10,7 @@ final class DueStore: ObservableObject {
         guard let uid = Auth.auth().currentUser?.uid else { return }
         db.collection("users").document(uid)
             .collection("dues")
-            .order(by: "dueDate") // server timestamp or date field
+            .order(by: "dueDate")
             .addSnapshotListener { [weak self] snap, err in
                 if let err = err { print("⚠️ due listen:", err); return }
                 let docs = snap?.documents ?? []
@@ -74,7 +74,7 @@ struct DueListView: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
-                // Title Section
+                
                 VStack(alignment: .leading, spacing: 8) {
                     HStack {
                         Text("Dues")
@@ -82,7 +82,7 @@ struct DueListView: View {
                         Spacer()
                     }
                     
-                    // Filter Tabs
+                    
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack(spacing: 12) {
                             ForEach(DueFilter.allCases) { filterOption in
@@ -162,7 +162,6 @@ struct DueListView: View {
     }
 }
 
-// MARK: - Components
 
 private struct FilterTab: View {
     let title: String
@@ -239,7 +238,7 @@ private struct DueCard: View {
                     .fill(Color(.secondarySystemBackground))
             )
             
-            // Due Info
+            
             VStack(alignment: .leading, spacing: 6) {
                 Text(due.itemTitle)
                     .font(.headline)
@@ -276,7 +275,7 @@ private struct DueCard: View {
             
             Spacer()
             
-            // Action Button
+           
             if due.status == "pending" {
                 Button(action: onMarkPaid) {
                     Text("Mark Paid")

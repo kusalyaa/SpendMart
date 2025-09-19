@@ -1,11 +1,11 @@
-// DueView.swift
+
 import SwiftUI
 
 struct DueView: View {
     var body: some View {
         NavigationView {
             VStack(spacing: 20) {
-                // Search Bar
+                
                 HStack {
                     Image(systemName: "magnifyingglass")
                         .foregroundColor(.gray)
@@ -20,7 +20,7 @@ struct DueView: View {
                 .cornerRadius(10)
                 .padding(.horizontal)
                 
-                // Unpaid Section
+                
                 VStack(alignment: .leading, spacing: 16) {
                     HStack {
                         Text("Unpaid")
@@ -44,7 +44,7 @@ struct DueView: View {
                 }
                 .padding(.horizontal)
                 
-                // Warranty Exp Section
+                
                 VStack(alignment: .leading, spacing: 16) {
                     HStack {
                         Text("Warranty Exp")

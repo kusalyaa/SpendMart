@@ -1,9 +1,9 @@
 import SwiftUI
 
-/// Root tab bar for the whole app.
+
 struct RootTabView: View {
     init() {
-        // Make tab bar translucent with custom background
+        
         let appearance = UITabBarAppearance()
         appearance.configureWithTransparentBackground()
         appearance.backgroundEffect = UIBlurEffect(style: .systemMaterial)
@@ -30,7 +30,7 @@ struct RootTabView: View {
             NavigationStack { SettingsView() }
                 .tabItem { Label("Settings", systemImage: "person") }
         }
-        .tint(.blue) // Accent color for icons
+        .tint(.blue) 
     }
 }
 

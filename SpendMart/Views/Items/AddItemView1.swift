@@ -2,12 +2,11 @@ import SwiftUI
 import FirebaseAuth
 import FirebaseFirestore
 
-// Theme enums (match app semantics)
 enum ItemType: String, CaseIterable, Identifiable { case product = "Product", service = "Service"; var id: String { rawValue } }
 enum PayStatus: String, CaseIterable, Identifiable { case paid = "Paid", due = "To be paid"; var id: String { rawValue } }
 
 struct AddItemView1: View {
-    // Optional presets (e.g., from Scan)
+    
     var presetName: String = ""
     var presetAmountText: String = ""
     var presetDate: Date = Date()
@@ -15,7 +14,7 @@ struct AddItemView1: View {
 
     @Environment(\.dismiss) private var dismiss
 
-    // Form state
+    
     @State private var name = ""
     @State private var selectedCategory = "Category"
     @State private var type: ItemType = .product
@@ -24,11 +23,10 @@ struct AddItemView1: View {
     @State private var date = Date()
     @State private var warrantyExpDate = Date().addingTimeInterval(60*60*24*365)
 
-    // Location (simple label for now)
+    
     @State private var showLocationSheet = false
     @State private var locationLabel = ""
 
-    // UX
     @State private var saving = false
     @State private var error: String?
 
@@ -43,7 +41,7 @@ struct AddItemView1: View {
         ScrollView {
             VStack(spacing: 18) {
 
-                // Header (blue gradient, matches Home vibe)
+                
                 ZStack {
                     RoundedRectangle(cornerRadius: 24)
                         .fill(LinearGradient(colors: [Color.blue, Color.blue.opacity(0.85)],
@@ -73,7 +71,7 @@ struct AddItemView1: View {
                 .padding(.horizontal, 16)
                 .padding(.top, 8)
 
-                // Basics card
+                
                 Card {
                     fieldLabel("Name")
                     TextField("Name", text: $name)
@@ -111,7 +109,7 @@ struct AddItemView1: View {
                         .textFieldStyle(.roundedBorder)
                 }
 
-                // Dates card
+                
                 Card {
                     HStack {
                         Image(systemName: "calendar").foregroundStyle(.secondary)
@@ -126,7 +124,7 @@ struct AddItemView1: View {
                     }
                 }
 
-                // Location card
+                
                 Card {
                     HStack(spacing: 12) {
                         Image(systemName: "mappin.and.ellipse").foregroundStyle(.secondary)
@@ -147,7 +145,7 @@ struct AddItemView1: View {
                     }
                 }
 
-                // Actions
+                
                 VStack(spacing: 12) {
                     Button {
                         Task { await save() }
@@ -193,7 +191,6 @@ struct AddItemView1: View {
         .navigationBarTitleDisplayMode(.inline)
     }
 
-    // MARK: - Save to Firestore (same logic you use elsewhere)
     private func save() async {
         guard let amount = Double(amountText.replacingOccurrences(of: ",", with: "")) else { return }
         saving = true; error = nil
@@ -221,7 +218,6 @@ struct AddItemView1: View {
         }
     }
 
-    // MARK: - Small UI helpers
     @ViewBuilder private func fieldLabel(_ text: String) -> some View {
         Text(text).font(.footnote).foregroundStyle(.secondary)
     }
@@ -240,7 +236,7 @@ struct AddItemView1: View {
     }
 }
 
-// Reusable card container matching app theme
+
 fileprivate struct Card<Content: View>: View {
     @ViewBuilder var content: () -> Content
     var body: some View {
@@ -253,7 +249,7 @@ fileprivate struct Card<Content: View>: View {
     }
 }
 
-// Minimal location label sheet (keeps UI in-theme; no GPS needed right now)
+
 fileprivate struct LocationLabelSheet: View {
     var initial: String
     var onSave: (String) -> Void

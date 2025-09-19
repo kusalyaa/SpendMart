@@ -94,7 +94,7 @@ struct ItemDetailView: View {
                     }
                 }
 
-                // Location (button-only UI)
+                
                 card {
                     VStack(alignment: .leading, spacing: 8) {
                         Text("Location").font(.headline)
@@ -139,7 +139,7 @@ struct ItemDetailView: View {
                     }
                 }
 
-                // Notes
+                
                 card {
                     if isEditing {
                         TextField("Note", text: $noteText, axis: .vertical).lineLimit(3...6)
@@ -246,7 +246,6 @@ struct ItemDetailView: View {
         longitude = it.longitude
     }
 
-    // MARK: - Data
 
     private func fetchItem() async {
         guard let uid = Auth.auth().currentUser?.uid else { return }

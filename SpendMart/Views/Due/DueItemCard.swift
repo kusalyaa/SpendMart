@@ -1,4 +1,4 @@
-// DueItemCard.swift
+
 import SwiftUI
 
 struct DueItemCard: View {

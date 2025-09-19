@@ -74,14 +74,13 @@ struct BiometricGateView: View {
         }
     }
 
-    // MARK: - Helpers
 
     private func startForegroundObserver() {
         guard fgObserver == nil else { return }
         fgObserver = NotificationCenter.default
             .publisher(for: UIApplication.didBecomeActiveNotification)
             .sink { _ in
-                // auto-prompt when returning to foreground if still locked
+                
                 if !isPrompting {
                     log("didBecomeActive → auto prompt()")
                     prompt()
@@ -93,7 +92,7 @@ struct BiometricGateView: View {
     }
 
     private func prompt() {
-        // Guard against double triggers
+        
         if isPrompting {
             log("prompt() called while already prompting → ignore")
             return
@@ -117,7 +116,7 @@ struct BiometricGateView: View {
                 onUnlocked()
             } else {
                 log("biometrics-only evaluatePolicy → failed → try fallback with passcode")
-                // Optional second attempt with passcode fallback:
+                
                 BiometricAuth.authenticate(allowPasscode: true, reason: "Unlock SpendMart") { second in
                     isPrompting = false
                     if second {

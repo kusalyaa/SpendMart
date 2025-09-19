@@ -1,4 +1,4 @@
-// SpendMart/SpendMart/ViewModels/SessionViewModel.swift
+
 import Foundation
 import FirebaseAuth
 

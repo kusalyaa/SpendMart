@@ -163,7 +163,7 @@ struct CategoryDetailView: View {
     }
 }
 
-// Read-only map view used by ItemDetailView (already provided in MapViews.swift, keep as-is)
+
 struct ItemLocationView: View {
     let title: String
     let latitude: Double

@@ -1,6 +1,5 @@
 import SwiftUI
 
-// MARK: - Onboarding
 
 struct SpendSmartOnboardingView: View {
     @State private var showingProfileSetup = false
@@ -43,12 +42,11 @@ struct SpendSmartOnboardingView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color.white)
         .fullScreenCover(isPresented: $showingProfileSetup) {
-            ProfileSetupView()   // your existing view
+            ProfileSetupView()
         }
     }
 }
 
-// MARK: - Entry View (used by AppRootView when logged out)
 
 struct ContentView: View {
     @EnvironmentObject var session: AppSession
@@ -57,18 +55,18 @@ struct ContentView: View {
 
     var body: some View {
         Group {
-            // Only gate with biometrics if the user is ALREADY logged in
+            
             if session.isLoggedIn && requiresBiometricGate && !unlocked {
                 BiometricGateView {
                     unlocked = true
                 }
             } else {
-                // Normal onboarding/login content (no biometrics while logged out)
+                
                 SpendSmartOnboardingView()
             }
         }
         .onChange(of: scenePhase) { phase in
-            // Re-lock whenever app goes to background
+          
             if phase == .background { unlocked = false }
         }
     }
@@ -81,7 +79,6 @@ struct ContentView: View {
     }
 }
 
-// MARK: - Preview
 
 #Preview {
     ContentView()

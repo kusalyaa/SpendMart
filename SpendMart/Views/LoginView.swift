@@ -8,18 +8,18 @@ struct LoginView: View {
     @State private var password = ""
     @State private var showingCreateAccount = false
 
-    // Routing
+    
     @State private var presentVerify = false
-    @State private var showDashboard = false   // -> DashboardView()
+    @State private var showDashboard = false
 
-    // Feedback
+    
     @State private var showAlert = false
     @State private var alertMessage = ""
     @State private var isLoading = false
 
     var body: some View {
         VStack(spacing: 0) {
-            // Header
+            
             VStack(spacing: 24) {
                 Text("Log In")
                     .font(.system(size: 28, weight: .semibold))
@@ -37,7 +37,7 @@ struct LoginView: View {
             }
             .padding(.bottom, 40)
 
-            // Form
+           
             VStack(spacing: 20) {
                 VStack(alignment: .leading, spacing: 8) {
                     Text("Email").font(.system(size: 14)).foregroundColor(.gray)
@@ -62,7 +62,7 @@ struct LoginView: View {
 
             Spacer()
 
-            // Buttons
+            
             VStack(spacing: 16) {
                 Button(action: { handleLogin() }) {
                     Text("Continue")
@@ -88,29 +88,29 @@ struct LoginView: View {
         .background(Color.white)
         .navigationBarHidden(true)
 
-        // Create account (sign up)
+       
         .fullScreenCover(isPresented: $showingCreateAccount) { ProfileSetupView() }
 
-        // "Check your email" screen
+        
         .fullScreenCover(isPresented: $presentVerify) {
             ConfirmEmailView(
                 userEmail: email,
                 onVerified: { verifiedNavigationFromVerify() },
-                onChangeEmail: { presentVerify = false } // dismiss to edit email
+                onChangeEmail: { presentVerify = false }
             )
         }
 
-        // Dashboard after verified
+        
         .fullScreenCover(isPresented: $showDashboard) {
             RootTabView()   
         }
 
-        // Errors
+        
         .alert("Login Error", isPresented: $showAlert) {
             Button("OK", role: .cancel) { }
         } message: { Text(alertMessage) }
 
-        // Loader
+        
         .overlay(
             Group {
                 if isLoading {
@@ -124,26 +124,24 @@ struct LoginView: View {
         )
     }
 
-    // Dismiss the verify cover, then present dashboard
-    private func verifiedNavigationFromVerify() {
+     private func verifiedNavigationFromVerify() {
         Task {
             guard let user = Auth.auth().currentUser else { return }
             do {
                 try await user.reload()
                 if user.isEmailVerified {
                     await MainActor.run { presentVerify = false }
-                    try? await Task.sleep(nanoseconds: 150_000_000) // 0.15s
+                    try? await Task.sleep(nanoseconds: 150_000_000)
                     await MainActor.run { showDashboard = true }
                 }
             } catch {
-                // ignore transient errors; verify screen stays
+                
             }
         }
     }
 
-    // MARK: - Logic
     private func handleLogin() {
-        // reset routing defensively
+        
         presentVerify = false
         showDashboard = false
 
@@ -162,7 +160,7 @@ struct LoginView: View {
                 let result = try await Auth.auth().signIn(withEmail: email, password: password)
                 let user = result.user
 
-                // Always reload to get fresh verification status
+              
                 try await user.reload()
                 let verified = Auth.auth().currentUser?.isEmailVerified ?? user.isEmailVerified
 
@@ -170,7 +168,7 @@ struct LoginView: View {
                     isLoading = false
                     showDashboard = true
                 } else {
-                    // Send verification email (idempotent)
+                    
                     try await user.sendEmailVerification()
                     isLoading = false
                     presentVerify = true

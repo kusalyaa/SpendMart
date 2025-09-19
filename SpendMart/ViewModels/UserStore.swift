@@ -1,4 +1,4 @@
-// SpendMart/SpendMart/ViewModels/UserStore.swift
+
 import Foundation
 import FirebaseFirestore
 import FirebaseAuth

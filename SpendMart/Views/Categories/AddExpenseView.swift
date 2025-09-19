@@ -20,7 +20,7 @@ struct AddExpenseView: View {
                 
                 ScrollView {
                     VStack(spacing: 24) {
-                        // Amount Section
+                        
                         VStack(spacing: 16) {
                             Text("Enter Amount")
                                 .font(.title2)
@@ -48,7 +48,7 @@ struct AddExpenseView: View {
                             }
                         }
                         
-                        // Category Section
+                        
                         VStack(spacing: 16) {
                             Text("Category")
                                 .font(.title2)
@@ -71,7 +71,7 @@ struct AddExpenseView: View {
                             .padding(.horizontal, -20)
                         }
                         
-                        // Description Section
+                        
                         VStack(spacing: 16) {
                             Text("Description")
                                 .font(.title2)
@@ -88,7 +88,7 @@ struct AddExpenseView: View {
                                 )
                         }
                         
-                        // Date Section
+                        
                         VStack(spacing: 16) {
                             Text("Date")
                                 .font(.title2)
@@ -106,7 +106,7 @@ struct AddExpenseView: View {
                                 )
                         }
                         
-                        // Payment Method Section
+                        
                         VStack(spacing: 16) {
                             Text("Payment Method")
                                 .font(.title2)
@@ -140,7 +140,7 @@ struct AddExpenseView: View {
                             }
                         }
                         
-                        // Add Button
+                        
                         Button(action: addExpense) {
                             Text("Add Expense")
                                 .font(.system(size: 18, weight: .semibold))
@@ -188,8 +188,7 @@ struct AddExpenseView: View {
         print("Description: \(description)")
         print("Date: \(selectedDate)")
         print("Payment Method: \(paymentMethod)")
-        
-        // Dismiss the view
+       
         presentationMode.wrappedValue.dismiss()
     }
 }

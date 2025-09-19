@@ -6,7 +6,7 @@ import UserNotifications
 
 @MainActor
 final class SettingsStore: ObservableObject {
-    // Profile
+    
     @Published var name: String = ""
     @Published var email: String = ""
     @Published var phone: String = ""
@@ -14,14 +14,14 @@ final class SettingsStore: ObservableObject {
     @Published var incomeLKR: String = ""
     @Published var address: String = ""
 
-    // Permissions
+    
     @Published var cameraAllowed: Bool = false
     @Published var notificationsAllowed: Bool = false
 
     private var sub: ListenerRegistration?
 
     func bind() {
-        // Firestore profile
+        
         guard let uid = Auth.auth().currentUser?.uid else { return }
         let ref = Firestore.firestore().collection("users").document(uid)
 
@@ -49,11 +49,11 @@ final class SettingsStore: ObservableObject {
     deinit { sub?.remove() }
 
     func refreshPermissions() {
-        // Camera
+        
         let cam = AVCaptureDevice.authorizationStatus(for: .video)
         cameraAllowed = (cam == .authorized)
 
-        // Notifications
+        
         UNUserNotificationCenter.current().getNotificationSettings { settings in
             DispatchQueue.main.async {
                 self.notificationsAllowed = (settings.authorizationStatus == .authorized || settings.authorizationStatus == .provisional)
@@ -67,7 +67,7 @@ final class SettingsStore: ObservableObject {
                 DispatchQueue.main.async { self.refreshPermissions() }
             }
         } else {
-            openAppSettings() // cannot revoke programmatically
+            openAppSettings() 
         }
     }
 

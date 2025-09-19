@@ -10,10 +10,10 @@ enum BudgetMode: String, CaseIterable, Identifiable {
 }
 
 struct IncomeSetupView: View {
-    @EnvironmentObject var session: AppSession            // ⬅️ add this
-    @Environment(\.dismiss) private var dismiss           // ⬅️ to close local stack after save
+    @EnvironmentObject var session: AppSession
+    @Environment(\.dismiss) private var dismiss
+    @AppStorage("onboardingComplete") private var onboardingComplete: Bool = false
 
-    // MARK: - UI State
     @State private var monthlyIncomeText: String = ""
     @State private var monthlyExpensesText: String = ""
     @State private var budgetMode: BudgetMode = .percentage
@@ -154,7 +154,6 @@ struct IncomeSetupView: View {
         .onAppear { print("[Flow][Income] Arrived at IncomeSetupView") }
     }
 
-    // MARK: - Save + leave onboarding
     private func saveAndExit() {
         guard let uid = Auth.auth().currentUser?.uid else {
             alertMessage = "You’re not signed in."; showAlert = true; return
@@ -167,8 +166,8 @@ struct IncomeSetupView: View {
 
         let incomeVal = income, expensesVal = expenses, budgetVal = budget
 
-        // Save in the background; don’t block navigation
-        Task.detached {
+        Task {
+            
             do {
                 try await withTimeout(seconds: 8) {
                     try await UserService.shared.updateFinancials(
@@ -181,11 +180,22 @@ struct IncomeSetupView: View {
             } catch {
                 print("[Flow][Income] Background save failed/timed out: \(error)")
             }
-        }
 
-        // Release the root router and close onboarding
-        session.suppressAuthRouting = false        // ⬅️ let AppRootView switch to Home
-        dismiss()                                   // ⬅️ close this stack
+           
+            await MainActor.run {
+                onboardingComplete = true
+                print("[Flow][Income] completed → onboardingComplete=true")
+            }
+
+            
+            try? await Task.sleep(nanoseconds: 150_000_000)
+
+            await MainActor.run {
+                isSaving = false
+                session.suppressAuthRouting = false
+                dismiss()
+            }
+        }
     }
 
     private func withTimeout<T>(seconds: Double, operation: @escaping () async throws -> T) async throws -> T {
@@ -218,7 +228,6 @@ struct IncomeSetupView: View {
     }
 }
 
-// Theme-matching card
 fileprivate struct Card<Content: View>: View {
     @ViewBuilder var content: () -> Content
     var body: some View {

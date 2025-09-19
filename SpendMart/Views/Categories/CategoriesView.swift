@@ -79,7 +79,7 @@ struct CategoriesView: View {
                 .padding(.trailing, 20)
                 .padding(.bottom, 28)
         }
-        // Title from parent NavigationStack/NavigationView
+        
         .navigationTitle("Categories")
         .alert("Error", isPresented: .constant(errorText != nil), actions: {
             Button("OK") { errorText = nil }

@@ -336,7 +336,6 @@ final class ScannerCoordinator: NSObject,
     #endif
 }
 
-// MARK: - Present helper
 extension UIApplication {
     static func presentOnRoot(_ vc: UIViewController) {
         let rootVC: UIViewController? = UIApplication.shared.connectedScenes

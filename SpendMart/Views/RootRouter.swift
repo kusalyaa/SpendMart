@@ -77,15 +77,14 @@ private struct ConfirmEmailWatcher: View {
     }
 }
 
-/// Shows your IncomeSetupView until we detect income is saved, then flips the flag.
-/// No need to modify your IncomeSetupView file.
+
 private struct IncomeSetupGate: View {
     let uid: String
     @EnvironmentObject var userStore: UserStore
     @State private var listenerAttached = false
 
     var body: some View {
-        IncomeSetupView() // your existing UI
+        IncomeSetupView()
             .onAppear {
                 attachAutoCompleteListenerIfNeeded()
             }
@@ -99,9 +98,6 @@ private struct IncomeSetupGate: View {
         ref.addSnapshotListener { [weak userStore] snap, _ in
             guard let data = snap?.data() else { return }
 
-            // Heuristics: mark as complete when income is saved.
-            // Works with documents shaped like:
-            // { income: { monthly: <num>, autoBudget: <bool> } }  OR  { monthlyIncome: <num> }
             let incomeFromNested = (data["income"] as? [String: Any])?["monthly"] as? NSNumber
             let incomeFlat = data["monthlyIncome"] as? NSNumber
 

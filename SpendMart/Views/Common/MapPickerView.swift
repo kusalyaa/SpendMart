@@ -13,10 +13,10 @@ struct MapPickerView: View {
     @State private var placeName: String = ""
     @State private var isGeocoding = false
 
-    // Default center: Colombo
+   
     private let defaultCenter = CLLocationCoordinate2D(latitude: 6.9271, longitude: 79.8612)
 
-    // Equatable key for onChange
+    
     private var coordKey: String {
         guard let c = selectedCoord else { return "" }
         return String(format: "%.6f,%.6f", c.latitude, c.longitude)
@@ -31,7 +31,7 @@ struct MapPickerView: View {
                 showsUserLocation: false,
                 markerTint: UIColor(Color.appBrand)
             )
-            // Use an Equatable key instead of the coordinate itself
+            
             .onChange(of: coordKey) { _ in
                 if let coord = selectedCoord {
                     reverseGeocode(coord)

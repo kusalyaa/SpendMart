@@ -5,12 +5,12 @@ import MapKit
 import CoreLocation
 
 struct AddItemView: View {
-    // Preselected category (from Category grid)
+    
     var preselectedCategoryId: String? = nil
     var preselectedCategoryName: String? = nil
     var preselectedCategoryColorHex: String? = nil
 
-    // ✅ Presets from Scan/OCR flow
+    
     var presetTitle: String? = nil
     var presetDescription: String? = nil
     var presetAmount: String? = nil
@@ -19,16 +19,16 @@ struct AddItemView: View {
     @Environment(\.dismiss) private var dismiss
     private let db = Firestore.firestore()
 
-    // Config
+    
     private let creditMonthlyRate = 0.015
 
-    // Categories
+    
     @StateObject private var categoriesStore = CategoriesStore()
     @State private var selectedCategoryId: String?
     @State private var selectedCategoryName: String?
     @State private var selectedCategoryColorHex: String?
 
-    // Form
+    
     @State private var title: String = ""
     @State private var description: String = ""
     @State private var amountText: String = ""
@@ -36,26 +36,26 @@ struct AddItemView: View {
     @State private var date: Date = Date()
     @State private var warrantyExp: Date = Date()
 
-    // Payment / status
+    
     @State private var paymentMethod: String = "Wallet"
     @State private var status: String = "Paid"
     @State private var installments: Int = 3
     @State private var justSaveNoEffects = false
 
-    // Location
+    
     @State private var showLocationPicker = false
     @State private var locationName: String = ""
     @State private var latitude: Double?
     @State private var longitude: Double?
 
-    // Budget shortfall
+    
     @State private var showShortfallSheet = false
     @State private var shortfallAmount: Double = 0
     @State private var shortfallInstallments: Int = 3
     @State private var pendingCatId: String = ""
     @State private var pendingCatName: String = ""
 
-    // UI
+    
     @State private var isSaving = false
     @State private var errorText: String?
 
@@ -78,7 +78,7 @@ struct AddItemView: View {
 
     var body: some View {
         Form {
-            // Category
+            
             Section(header: Text("Category")) {
                 Picker("Select Category", selection: Binding(
                     get: { selectedCategoryId ?? "" },
@@ -97,7 +97,7 @@ struct AddItemView: View {
                 }
             }
 
-            // Basic
+            
             Section(header: Text("Basic Info")) {
                 HStack {
                     Circle()
@@ -120,7 +120,7 @@ struct AddItemView: View {
                 DatePicker("Warranty Expiry", selection: $warrantyExp, displayedComponents: .date)
             }
 
-            // Payment
+            
             Section(header: Text("Payment")) {
                 Picker("Method", selection: $paymentMethod) {
                     Text("Wallet").tag("Wallet")
@@ -160,7 +160,7 @@ struct AddItemView: View {
                 Toggle("Just save (no deductions)", isOn: $justSaveNoEffects)
             }
 
-            // Location
+            
             Section(header: Text("Location")) {
                 if let lat = latitude, let lng = longitude {
                     Text(locationName.isEmpty ? "Pinned location" : locationName)
@@ -243,7 +243,7 @@ struct AddItemView: View {
         .onAppear {
             NotificationManager.shared.requestAuthIfNeeded()
 
-            // ✅ Fill presets if provided
+            
             if let presetTitle = presetTitle, !presetTitle.isEmpty { title = presetTitle }
             if let presetDescription = presetDescription, !presetDescription.isEmpty { description = presetDescription }
             if let presetAmount = presetAmount, !presetAmount.isEmpty { amountText = presetAmount }
@@ -263,7 +263,6 @@ struct AddItemView: View {
         }
     }
 
-    // MARK: - Save flow
 
     private var isFormValid: Bool {
         (selectedCategoryId != nil) &&
@@ -286,7 +285,7 @@ struct AddItemView: View {
             return
         }
 
-        // ✅ Budget-remaining validation (source of truth)
+       
         if paymentMethod == "Wallet" && (status == "Paid" || status == "Pay") {
             do {
                 let remaining = try await fetchBudgetRemaining(uid: uid)
@@ -334,7 +333,7 @@ struct AddItemView: View {
             switch paymentMethod {
             case "Wallet":
                 if handleBudgetShortfall {
-                    // Pay what we can from remaining budget; finance the rest
+                    
                     let remaining = try await fetchBudgetRemaining(uid: uid)
                     let budgetPaid = min(remaining, amt)
                     let creditPrincipal = max(amt - budgetPaid, 0)
@@ -373,7 +372,7 @@ struct AddItemView: View {
                     )
 
                 } else {
-                    // Normal wallet path: only budgetSpent is affected
+                    
                     data["paymentMethod"] = "Wallet"
                     data["status"] = status
 
@@ -386,7 +385,7 @@ struct AddItemView: View {
 
             case "Credit":
                 if status == "Pay" {
-                    // First installment due now; try to cover from budget, finance the rest + remaining installments
+                   
                     let total = creditTotal(principal: amt, months: installments)
                     let first = perInstallment(total: total, months: installments)
 
@@ -427,7 +426,7 @@ struct AddItemView: View {
                     )
 
                 } else {
-                    // To be paid later: entire total becomes credit.used, schedule all dues
+                    
                     let total = creditTotal(principal: amt, months: installments)
                     let per = perInstallment(total: total, months: installments)
 
@@ -469,7 +468,6 @@ struct AddItemView: View {
         isSaving = false
     }
 
-    // MARK: - Firestore helpers
 
     private func writeItemAndEffects(
         uid: String,
@@ -495,7 +493,7 @@ struct AddItemView: View {
             .updateData(["credit.used": FieldValue.increment(amount)])
     }
 
-    // ✅ Source of truth for validation: monthlyBudget - budgetSpent
+    
     private func fetchBudgetRemaining(uid: String) async throws -> Double {
         let snap = try await db.collection("users").document(uid).getDocument()
         let f = (snap.data()?["financials"] as? [String: Any]) ?? [:]
@@ -545,7 +543,7 @@ struct AddItemView: View {
                 "createdAt": FieldValue.serverTimestamp()
             ])
 
-            // Local notification at 9 AM on due day (or a few seconds later if due is in the past)
+           
             var at = cal.date(bySettingHour: 9, minute: 0, second: 0, of: dueDate) ?? dueDate
             if at < Date() { at = Date().addingTimeInterval(5) }
             NotificationManager.shared.schedule(

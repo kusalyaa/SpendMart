@@ -30,23 +30,23 @@ struct HomeView: View {
                     .padding(.horizontal, 16)
                     .padding(.top, 8)
 
-                    // BLUE CARD
+                    
                     BalanceCard(
-                        total: store.net,             // "Total Balance" = Net After Expenses
+                        total: store.net,
                         income: store.income,
                         expense: store.expenses,
                         freeCash: store.freeCash
                     )
                     .padding(.horizontal, 16)
 
-                    // Additional Info Cards
+                    
                     HStack(spacing: 12) {
                         InfoCard(title: "Emergency Fund", amount: store.emergencyFund)
                         InfoCard(title: "Budget Spent", amount: store.budgetSpent)
                     }
                     .padding(.horizontal, 16)
 
-                    // PROGRESS ROWS
+                    
                     VStack(spacing: 12) {
                         ProgressRow(
                             title: "Monthly Budget",
@@ -66,7 +66,6 @@ struct HomeView: View {
                     }
                     .padding(.horizontal, 16)
 
-                    // QUICK ACTIONS
                     Text("Quick Actions")
                         .font(.headline)
                         .padding(.horizontal, 16)
@@ -82,7 +81,6 @@ struct HomeView: View {
     }
 }
 
-// MARK: - Components
 
 fileprivate struct BalanceCard: View {
     var total: Double
@@ -132,7 +130,7 @@ fileprivate struct BalanceCard: View {
                     Spacer()
                 }
                 
-                // Free Cash section with proper spacing
+               
                 HStack {
                     Image(systemName: "banknote.fill")
                         .foregroundStyle(.white.opacity(0.9))
